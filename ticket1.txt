@@ -1,0 +1,155 @@
+-- 1. Создание бд
+CREATE DATABASE ticket1;
+-- Установка расширения для шифрования 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Справочник Отделов (цехов)
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(100) NOT NULL UNIQUE,
+    location VARCHAR(50) -- расположение цеха
+);
+
+-- Справочник Должностей (Штатное расписание)
+CREATE TABLE positions (
+    position_id SERIAL PRIMARY KEY,
+    position_title VARCHAR(150) NOT NULL UNIQUE,
+    base_salary NUMERIC(10, 2) NOT NULL CHECK (base_salary > 0),
+    staff_units INT NOT NULL CHECK (staff_units >= 0) -- всего ставок
+);
+
+-- Основная таблица Сотрудники
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+(-[А-ЯЁ][а-яё]+)?$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    birth_date DATE NOT NULL,
+    gender CHAR(1) NOT NULL CHECK (gender IN ('М', 'Ж')),
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    hire_date DATE NOT NULL,
+    department_id INT NOT NULL REFERENCES departments(department_id) ON DELETE RESTRICT,
+    position_id INT NOT NULL REFERENCES positions(position_id) ON DELETE RESTRICT,
+    bonus NUMERIC(8, 2) DEFAULT 0.00 CHECK (bonus >= 0),
+    salary_account VARCHAR(20) NOT NULL UNIQUE CHECK (salary_account ~ '^\d{20}$')
+);
+
+-- 2. Заполнение данными
+-- Отделы 
+INSERT INTO departments (department_name, location) VALUES
+('Цех сборки №1', 'Корпус А'),
+('Цех сборки №2', 'Корпус А'),
+('Цех сборки №3', 'Корпус А'),
+('Сварочный цех', 'Корпус Б'),
+('Транспортный цех', 'Корпус Б'),
+('Инструментальный цех', 'Корпус В'),
+('Ремонтный цех', 'Корпус В'),
+('Цех покраски', 'Корпус Г'),
+('Бухгалтерия', 'Административный корпус'),
+('Отдел кадров', 'Административный корпус');
+
+-- Должности 
+INSERT INTO positions (position_title, base_salary, staff_units) VALUES
+('Слесарь-сборщик', 45000.00, 5),
+('Слесарь-сборщик 2 разряда', 38000.00, 4),
+('Сварщик', 55000.00, 3),
+('Водитель погрузчика', 52000.00, 4),
+('Мастер цеха', 65000.00, 2),
+('Инженер-технолог', 70000.00, 2),
+('Наладчик оборудования', 48000.00, 3),
+('Маляр', 42000.00, 3),
+('Бухгалтер', 60000.00, 3),
+('Инспектор отдела кадров', 50000.00, 2);
+
+-- Сотрудники
+INSERT INTO employees (last_name, first_name, middle_name, birth_date, gender, passport_data, phone_number, hire_date, department_id, position_id, bonus, salary_account) VALUES
+('Иванов', 'Сергей', 'Петрович', '1960-05-15', 'М', '4501 123456', '+7(900)123-45-67', '2010-02-01', 1, 5, 5000.00, '40817810000000000001'),
+('Петрова', 'Анна', 'Ивановна', '1965-10-20', 'Ж', '4502 654321', '+7(901)234-56-78', '2012-05-10', 1, 1, 2000.00, '40817810000000000002'),
+('Сидоров', 'Иван', 'Алексеевич', '1985-03-12', 'М', '4503 111222', '+7(902)345-67-89', '2015-09-15', 1, 1, 1500.00, '40817810000000000003'),
+('Козлов', 'Дмитрий', 'Сергеевич', '1990-07-07', 'М', '4504 333444', '+7(903)456-78-90', '2018-01-20', 2, 2, 1000.00, '40817810000000000004'),
+('Морозова', 'Елена', 'Дмитриевна', '1988-12-01', 'Ж', '4505 555666', '+7(904)567-89-01', '2020-06-01', 2, 2, 500.00, '40817810000000000005'),
+('Волков', 'Максим', 'Олегович', '1975-08-22', 'М', '4506 777888', '+7(905)678-90-12', '2014-03-10', 4, 3, 3000.00, '40817810000000000006'),
+('Соколова', 'Татьяна', 'Павловна', '1982-04-05', 'Ж', '4507 999000', '+7(906)789-01-23', '2016-11-12', 4, 3, 2500.00, '40817810000000000007'),
+('Баранов', 'Алексей', 'Игнатьевич', '1963-09-30', 'М', '4508 101112', '+7(907)890-12-34', '2005-07-01', 5, 4, 4000.00, '40817810000000000008'),
+('Кузнецова', 'Ольга', 'Викторовна', '1992-02-14', 'Ж', '4509 131415', '+7(908)901-23-45', '2019-04-15', 6, 6, 3500.00, '40817810000000000009'),
+('Медведев', 'Павел', 'Николаевич', '1980-06-18', 'М', '4510 161718', '+7(909)012-34-56', '2011-08-20', 9, 9, 2000.00, '40817810000000000010'),
+('Васильева', 'Любовь', 'Андреевна', '1970-11-25', 'Ж', '4511 192021', '+7(910)123-45-67', '2008-12-05', 9, 9, 4500.00, '40817810000000000011'),
+('Николаев', 'Андрей', 'Степанович', '1987-09-12', 'М', '4512 212223', '+7(911)234-56-78', '2017-03-01', 10, 10, 3000.00, '40817810000000000012');
+
+-- 3. Запросы
+-- Запрос 1: Общее количество сотрудников пенсионного возраста
+SELECT 
+    COUNT(*) AS "Количество пенсионеров"
+FROM employees
+WHERE 
+    (gender = 'Ж' AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date)) >= 55)
+    OR
+    (gender = 'М' AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date)) >= 60);
+
+-- Запрос 2: Средняя сумма заработной платы всех сотрудников по цехам
+SELECT 
+    d.department_name AS "Цех / Отдел",
+    COUNT(e.employee_id) AS "Количество сотрудников",
+    ROUND(AVG(p.base_salary + COALESCE(e.bonus, 0)), 2) AS "Средняя заработная плата"
+FROM departments d
+LEFT JOIN employees e ON d.department_id = e.department_id
+LEFT JOIN positions p ON e.position_id = p.position_id
+GROUP BY d.department_id, d.department_name
+ORDER BY "Средняя заработная плата" DESC;
+
+-- Запрос 3: Сумма ежемесячных выплат по всем отделам с учетом свободных ставок
+SELECT 
+    d.department_name AS "Отдел",
+    SUM(p.base_salary * p.staff_units) AS "Сумма выплат с учетом свободных ставок"
+FROM departments d
+CROSS JOIN positions p
+WHERE p.position_id IN (
+    SELECT DISTINCT e2.position_id 
+    FROM employees e2 
+    WHERE e2.department_id = d.department_id
+    
+    UNION
+    
+    SELECT p2.position_id
+    FROM positions p2
+    WHERE p2.staff_units > (
+        SELECT COUNT(*) 
+        FROM employees e3 
+        WHERE e3.position_id = p2.position_id 
+        AND e3.department_id = d.department_id
+    )
+)
+GROUP BY d.department_name
+ORDER BY "Сумма выплат с учетом свободных ставок" DESC;
+
+-- 4. Функция шифрования
+CREATE OR REPLACE FUNCTION encrypt_salary_account(open_account TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    secret_key TEXT := 'FactorySecretKey2024';
+BEGIN
+    -- Проверка на NULL или пустую строку
+    IF open_account IS NULL OR open_account = '' THEN
+        RAISE EXCEPTION 'Номер счета не может быть пустым';
+    END IF;   
+    -- Проверка формата (ровно 20 цифр)
+    IF open_account !~ '^\d{20}$' THEN
+        RAISE EXCEPTION 'Номер счета должен содержать ровно 20 цифр';
+    END IF;
+    -- Шифрование: SHA-256 от (номер_счета + секретный_ключ)
+    RETURN encode(
+        sha256(convert_to(open_account || secret_key, 'UTF8')), 
+        'base64'
+    );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Демонстрация работы функции шифрования
+SELECT 
+    employee_id AS "ID сотрудника",
+    last_name AS "Фамилия",
+    salary_account AS "Открытый номер счета",
+    encrypt_salary_account(salary_account) AS "Зашифрованный номер счета"
+FROM employees
+ORDER BY employee_id;
+
