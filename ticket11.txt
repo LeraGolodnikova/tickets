@@ -1,0 +1,157 @@
+-- 1. Создание бд
+CREATE DATABASE ticket11;
+
+-- Комнаты
+CREATE TABLE rooms (
+    room_id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL UNIQUE,
+    floor INT NOT NULL CHECK (floor > 0),
+    total_area NUMERIC(5, 2) CHECK (total_area > 0),
+    has_broken_windows BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- Проживающие (взрослые + дети, но дети помечены флагом is_child)
+CREATE TABLE residents (
+    resident_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    birth_date DATE NOT NULL,
+    passport_data VARCHAR(11) UNIQUE CHECK (passport_data IS NULL OR passport_data ~ '^\d{4} \d{6}$'),
+    phone_number VARCHAR(16) UNIQUE CHECK (phone_number IS NULL OR phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    is_child BOOLEAN NOT NULL DEFAULT FALSE,
+    is_senior BOOLEAN NOT NULL DEFAULT FALSE,
+    room_id INT NOT NULL REFERENCES rooms(room_id) ON DELETE RESTRICT
+);
+
+-- 2. Заполнение тестовыми данными
+-- Комнаты 
+INSERT INTO rooms (room_number, floor, total_area, has_broken_windows) VALUES
+('101', 1, 18.5, FALSE),
+('102', 1, 20.0, TRUE),
+('103', 1, 22.5, FALSE),
+('201', 2, 18.0, TRUE),
+('202', 2, 24.0, FALSE),
+('203', 2, 19.5, FALSE),
+('301', 3, 21.0, TRUE),
+('302', 3, 20.5, FALSE),
+('303', 3, 23.0, FALSE),
+('304', 3, 17.5, TRUE);
+
+-- Проживающие (12 записей: 7 взрослых, 5 детей)
+INSERT INTO residents (last_name, first_name, middle_name, birth_date, passport_data, phone_number, is_child, is_senior, room_id) VALUES
+
+-- Комната 101: старший + 1 ребёнок
+('Иванов', 'Сергей', 'Петрович', '1975-05-15', '4501 111111', '+7(900)111-11-11', FALSE, TRUE, 1),
+('Иванов', 'Максим', 'Сергеевич', '2009-03-10', NULL, NULL, TRUE, FALSE, 1),
+
+-- Комната 102: старший + 1 ребёнок (стёкла выбиты)
+('Петрова', 'Анна', 'Ивановна', '1980-08-20', '4501 222222', '+7(900)222-22-22', FALSE, TRUE, 2),
+('Петрова', 'Ольга', 'Александровна', '2007-11-05', NULL, NULL, TRUE, FALSE, 2),
+
+-- Комната 201: старший + 2 детей (стёкла выбиты)
+('Сидоров', 'Иван', 'Алексеевич', '1978-02-10', '4501 333333', '+7(900)333-33-33', FALSE, TRUE, 4),
+('Сидоров', 'Артём', 'Иванович', '2010-06-15', NULL, NULL, TRUE, FALSE, 4),
+('Сидорова', 'Мария', 'Ивановна', '2013-09-22', NULL, NULL, TRUE, FALSE, 4),
+
+-- Комната 202: старший, без детей
+('Козлов', 'Дмитрий', 'Николаевич', '1965-12-01', '4501 444444', '+7(900)444-44-44', FALSE, TRUE, 5),
+
+-- Комната 301: старший + супруга (стёкла выбиты)
+('Морозов', 'Павел', 'Сергеевич', '1985-09-30', '4501 555555', '+7(900)555-55-55', FALSE, TRUE, 7),
+('Морозова', 'Любовь', 'Андреевна', '1987-04-25', '4501 666666', '+7(900)666-66-66', FALSE, FALSE, 7),
+
+-- Комната 303: старший
+('Волков', 'Максим', 'Олегович', '1970-11-15', '4501 777777', '+7(900)777-77-77', FALSE, TRUE, 9),
+
+-- Комната 304: старший + 1 ребёнок (стёкла выбиты)
+('Соколова', 'Татьяна', 'Павловна', '1982-08-30', '4501 888888', '+7(900)888-88-88', FALSE, TRUE, 10),
+('Соколов', 'Андрей', 'Игоревич', '2011-05-20', NULL, NULL, TRUE, FALSE, 10);
+
+
+-- 3. Запросы
+-- Запрос 1: Средний возраст проживающих в общежитии
+SELECT
+    ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date))), 1) AS "Средний возраст (лет)",
+    COUNT(*) AS "Всего проживающих"
+FROM residents;
+
+-- Запрос 2: Старшие в каждой комнате и где живут дети
+SELECT
+    r.room_number AS "Комната",
+    r.floor AS "Этаж",
+    res.last_name || ' ' || res.first_name || COALESCE(' ' || res.middle_name, '') AS "Старший",
+    res.phone_number AS "Телефон старшего"
+FROM rooms r
+JOIN residents res ON r.room_id = res.room_id
+WHERE res.is_senior = TRUE
+ORDER BY r.room_number;
+
+SELECT
+    r.room_number AS "Комната",
+    r.floor AS "Этаж",
+    COUNT(res.resident_id) AS "Количество детей"
+FROM rooms r
+JOIN residents res ON r.room_id = res.room_id
+WHERE res.is_child = TRUE
+GROUP BY r.room_number, r.floor
+ORDER BY r.room_number;
+
+-- Запрос 3: Комнаты, где выбиты стёкла
+SELECT
+    r.room_number AS "Комната",
+    r.floor AS "Этаж",
+    r.total_area AS "Площадь (кв.м)",
+    res.last_name || ' ' || res.first_name AS "Старший",
+    COUNT(res2.resident_id) AS "Всего проживающих"
+FROM rooms r
+JOIN residents res ON r.room_id = res.room_id AND res.is_senior = TRUE
+LEFT JOIN residents res2 ON r.room_id = res2.room_id
+WHERE r.has_broken_windows = TRUE
+GROUP BY r.room_number, r.floor, r.total_area, res.last_name, res.first_name
+ORDER BY r.room_number;
+
+
+-- 4. Функция удаления детей по достижению 18 лет
+CREATE OR REPLACE FUNCTION remove_adult_children()
+RETURNS INTEGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    WITH deleted AS (
+        DELETE FROM residents
+        WHERE is_child = TRUE
+          AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date)) >= 18
+        RETURNING *
+    )
+    SELECT COUNT(*) INTO deleted_count FROM deleted;
+
+    RAISE NOTICE 'Удалено записей о детях, достигших 18 лет: %', deleted_count;
+
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Для демонстрации добавим ребёнка, которому уже есть 18 лет
+INSERT INTO residents (last_name, first_name, middle_name, birth_date, passport_data, phone_number, is_child, is_senior, room_id)
+VALUES ('Тестов', 'Пётр', 'Сергеевич', '2005-06-10', NULL, NULL, TRUE, FALSE, 3);
+
+-- Проверим, что он добавился как ребёнок
+SELECT 'До удаления:' AS " ";
+SELECT resident_id, last_name, first_name, birth_date, is_child
+FROM residents
+WHERE is_child = TRUE
+ORDER BY resident_id;
+
+-- Вызываем функцию
+SELECT remove_adult_children() AS "Удалено записей";
+
+-- Проверим, что осталось
+SELECT 'После удаления:' AS " ";
+SELECT resident_id, last_name, first_name, birth_date, is_child
+FROM residents
+WHERE is_child = TRUE
+ORDER BY resident_id;
+
+

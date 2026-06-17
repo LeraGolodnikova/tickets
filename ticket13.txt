@@ -1,0 +1,193 @@
+CREATE DATABASE ticket13;
+
+-- 1.1 Комнаты
+CREATE TABLE rooms (
+    room_id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL UNIQUE,
+    floor INT NOT NULL CHECK (floor > 0),
+    total_area NUMERIC(5, 2) CHECK (total_area > 0),
+    beds_count INT NOT NULL CHECK (beds_count > 0)
+);
+
+-- 1.2 Категории проживающих
+CREATE TABLE resident_categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- 1.3 Проживающие
+CREATE TABLE residents (
+    resident_id SERIAL PRIMARY KEY,
+
+    -- ФИО: кириллица, с большой буквы
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+
+    -- Дата рождения
+    birth_date DATE NOT NULL,
+
+    -- Паспорт: маска "9999 999999" (для взрослых)
+    passport_data VARCHAR(11) UNIQUE CHECK (passport_data IS NULL OR passport_data ~ '^\d{4} \d{6}$'),
+
+    -- Телефон: маска +7(XXX)XXX-XX-XX
+    phone_number VARCHAR(16) UNIQUE CHECK (phone_number IS NULL OR phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+
+    -- Категория (студент, семейный студент, ребёнок и т.д.)
+    category_id INT NOT NULL REFERENCES resident_categories(category_id) ON DELETE RESTRICT,
+
+    -- Признак: посещает ли детское дошкольное учреждение (для детей)
+    attends_preschool BOOLEAN DEFAULT FALSE,
+
+    -- Комната
+    room_id INT NOT NULL REFERENCES rooms(room_id) ON DELETE RESTRICT
+);
+
+-- =============================================
+-- БЛОК 2: ТЕСТОВЫЕ ДАННЫЕ (DML)
+-- =============================================
+
+-- 2.1 Комнаты (10 записей)
+INSERT INTO rooms (room_number, floor, total_area, beds_count) VALUES
+('101', 1, 18.5, 2),
+('102', 1, 20.0, 3),
+('103', 1, 22.5, 2),
+('201', 2, 18.0, 3),
+('202', 2, 24.0, 2),
+('203', 2, 19.5, 2),
+('301', 3, 21.0, 3),
+('302', 3, 20.5, 2),
+('303', 3, 23.0, 3),
+('304', 3, 17.5, 2);
+
+-- 2.2 Категории проживающих (10 записей)
+INSERT INTO resident_categories (category_name) VALUES
+('Студент'),
+('Семейный студент'),
+('Супруг(а) студента'),
+('Ребёнок'),
+('Аспирант'),
+('Преподаватель'),
+('Сотрудник общежития'),
+('Гость'),
+('Практикант'),
+('Стажёр');
+
+-- 2.3 Проживающие (14 записей: студенты, семейные, дети)
+INSERT INTO residents (last_name, first_name, middle_name, birth_date, passport_data, phone_number, category_id, attends_preschool, room_id) VALUES
+
+-- Комната 101: семейный студент + супруга + ребёнок (2 года, не ходит в сад)
+('Иванов', 'Сергей', 'Петрович', '2002-05-15', '4501 111111', '+7(900)111-11-11', 2, FALSE, 1),
+('Иванова', 'Анна', 'Сергеевна', '2003-08-20', '4501 222222', '+7(900)222-22-22', 3, FALSE, 1),
+('Иванов', 'Максим', 'Сергеевич', '2023-03-10', NULL, NULL, 4, FALSE, 1),
+
+-- Комната 102: семейный студент + супруга + 2 детей (3 и 5 лет, оба не ходят)
+('Петров', 'Александр', 'Иванович', '2001-07-07', '4501 333333', '+7(900)333-33-33', 2, FALSE, 2),
+('Петрова', 'Елена', 'Викторовна', '2002-12-01', '4501 444444', '+7(900)444-44-44', 3, FALSE, 2),
+('Петрова', 'Ольга', 'Александровна', '2022-05-15', NULL, NULL, 4, FALSE, 2),
+('Петров', 'Дмитрий', 'Александрович', '2020-11-20', NULL, NULL, 4, FALSE, 2),
+
+-- Комната 201: обычный студент
+('Сидоров', 'Иван', 'Алексеевич', '2004-02-10', '4501 555555', '+7(900)555-55-55', 1, FALSE, 4),
+
+-- Комната 202: семейный студент + супруга + ребёнок (4 года, ходит в сад)
+('Козлов', 'Дмитрий', 'Николаевич', '2001-09-30', '4501 666666', '+7(900)666-66-66', 2, FALSE, 5),
+('Козлова', 'Татьяна', 'Павловна', '2002-04-25', '4501 777777', '+7(900)777-77-77', 3, FALSE, 5),
+('Козлова', 'Мария', 'Дмитриевна', '2021-06-10', NULL, NULL, 4, TRUE, 5),
+
+-- Комната 301: обычный студент
+('Морозов', 'Павел', 'Сергеевич', '2003-11-15', '4501 888888', '+7(900)888-88-88', 1, FALSE, 7),
+
+-- Комната 302: семейный студент + ребёнок (6 лет, не ходит)
+('Волков', 'Максим', 'Олегович', '2000-03-05', '4501 999999', '+7(900)999-99-99', 2, FALSE, 8),
+('Волков', 'Артём', 'Максимович', '2019-08-20', NULL, NULL, 4, FALSE, 8);
+
+
+-- =============================================
+-- БЛОК 3: ЗАПРОСЫ (DQL)
+-- =============================================
+
+-- Запрос 3.1: Проживающие в определённой комнате
+-- Пример: комната 102
+SELECT
+    'Проживающие в комнате 102' AS "Запрос 3.1",
+    r.room_number AS "Комната",
+    r.floor AS "Этаж",
+    res.last_name || ' ' || res.first_name || COALESCE(' ' || res.middle_name, '') AS "ФИО",
+    rc.category_name AS "Категория",
+    res.birth_date AS "Дата рождения",
+    EXTRACT(YEAR FROM AGE(CURRENT_DATE, res.birth_date)) || ' лет' AS "Возраст"
+FROM rooms r
+JOIN residents res ON r.room_id = res.room_id
+JOIN resident_categories rc ON res.category_id = rc.category_id
+WHERE r.room_number = '102'
+ORDER BY rc.category_name, res.last_name;
+
+-- Запрос 3.2: Дети до 7 лет, не посещающие дошкольные учреждения
+SELECT
+    'Дети до 7 лет без сада' AS "Запрос 3.2",
+    res.last_name || ' ' || res.first_name || COALESCE(' ' || res.middle_name, '') AS "ФИО ребёнка",
+    EXTRACT(YEAR FROM AGE(CURRENT_DATE, res.birth_date)) AS "Возраст (лет)",
+    r.room_number AS "Комната",
+    r.floor AS "Этаж",
+    -- Находим родителя (семейного студента) в той же комнате
+    (
+        SELECT parent.last_name || ' ' || parent.first_name
+        FROM residents parent
+        WHERE parent.room_id = res.room_id
+          AND parent.category_id IN (2)
+        LIMIT 1
+    ) AS "Родитель (семейный студент)"
+FROM residents res
+JOIN rooms r ON res.room_id = r.room_id
+WHERE res.category_id = 4
+  AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, res.birth_date)) < 7
+  AND res.attends_preschool = FALSE
+ORDER BY res.birth_date;
+
+-- Запрос 3.3: Общее количество всех детей семейных студентов
+/*
+ * Дети семейных студентов — это проживающие с category_id = 4 (Ребёнок),
+ * которые живут в одной комнате с семейным студентом (category_id = 2).
+ */
+SELECT
+    'Дети семейных студентов' AS "Запрос 3.3",
+    COUNT(DISTINCT child.resident_id) AS "Общее количество детей"
+FROM residents child
+JOIN rooms r ON child.room_id = r.room_id
+WHERE child.category_id = 4
+  AND EXISTS (
+      SELECT 1
+      FROM residents parent
+      WHERE parent.room_id = r.room_id
+        AND parent.category_id = 2
+  );
+
+
+-- =============================================
+-- БЛОК 4: РЕЗЕРВНАЯ КОПИЯ БАЗЫ ДАННЫХ
+-- =============================================
+
+/*
+ * Резервная копия создаётся командой pg_dump в терминале.
+ *
+ * Команда:
+ * pg_dump -U postgres -h localhost -d obshezhitie -F c -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_obshezhitie.backup"
+ *
+ * Параметры:
+ * -U postgres        — пользователь PostgreSQL
+ * -h localhost       — хост
+ * -d obshezhitie     — имя базы данных
+ * -F c               — формат custom (сжатый)
+ * -f "путь"          — путь к файлу
+ *
+ * Восстановление:
+ * pg_restore -U postgres -h localhost -d obshezhitie "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_obshezhitie.backup"
+ */
+
+SELECT
+    'РЕЗЕРВНАЯ КОПИЯ' AS "Пункт 4",
+    'Выполните в терминале:' AS "Инструкция",
+    'pg_dump -U postgres -h localhost -d obshezhitie -F c -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_obshezhitie.backup"' AS "Команда";
+
+

@@ -1,0 +1,219 @@
+-- 1. Создание бд
+CREATE DATABASE ticket6;
+
+-- Улицы
+CREATE TABLE streets (
+    street_id SERIAL PRIMARY KEY,
+    street_name VARCHAR(100) NOT NULL UNIQUE CHECK (street_name ~ '^[А-ЯЁ]')
+);
+
+-- Дома
+CREATE TABLE houses (
+    house_id SERIAL PRIMARY KEY,
+    house_number VARCHAR(10) NOT NULL,
+    year_built INT CHECK (year_built >= 1900 AND year_built <= 2100),
+    floors INT NOT NULL CHECK (floors > 0),
+    street_id INT NOT NULL REFERENCES streets(street_id) ON DELETE RESTRICT,
+    UNIQUE (house_number, street_id)
+);
+
+-- Квартиры
+CREATE TABLE apartments (
+    apartment_id SERIAL PRIMARY KEY,
+    apartment_number VARCHAR(10) NOT NULL,
+    total_area NUMERIC(6, 2) NOT NULL CHECK (total_area > 0),
+    rooms_count INT NOT NULL CHECK (rooms_count > 0),
+    is_privatized BOOLEAN NOT NULL DEFAULT FALSE,
+    house_id INT NOT NULL REFERENCES houses(house_id) ON DELETE RESTRICT,
+    UNIQUE (apartment_number, house_id)
+);
+
+-- Жильцы
+CREATE TABLE residents (
+    resident_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    birth_date DATE NOT NULL,
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    family_role VARCHAR(50) NOT NULL,
+    apartment_id INT NOT NULL REFERENCES apartments(apartment_id) ON DELETE RESTRICT
+);
+
+-- 2. Заполнение тестовыми данными
+-- Улицы
+INSERT INTO streets (street_name) VALUES
+('Улица Ленина'),
+('Улица Мира'),
+('Улица Пушкина'),
+('Улица Гагарина'),
+('Улица Тверская'),
+('Улица Садовая'),
+('Улица Цветная'),
+('Проспект Строителей'),
+('Улица Парковая'),
+('Улица Школьная');
+
+-- Дома
+INSERT INTO houses (house_number, year_built, floors, street_id) VALUES
+('1', 1985, 5, 1),
+('3', 1990, 9, 1),
+('5', 2000, 12, 1),
+('2', 1980, 5, 2),
+('4', 1995, 9, 2),
+('10', 2010, 16, 3),
+('15', 1975, 5, 3),
+('7', 2005, 10, 4),
+('12', 1988, 9, 5),
+('8', 1992, 5, 6),
+('20', 2015, 14, 7),
+('3', 1970, 5, 8);
+
+-- Квартиры
+INSERT INTO apartments (apartment_number, total_area, rooms_count, is_privatized, house_id) VALUES
+-- Дом 1 (Ленина, 1)
+('1', 45.5, 2, TRUE, 1),
+('2', 60.0, 3, TRUE, 1),
+('3', 38.0, 1, FALSE, 1),
+-- Дом 2 (Ленина, 3)
+('5', 55.0, 2, TRUE, 2),
+('10', 70.5, 3, TRUE, 2),
+-- Дом 4 (Мира, 2)
+('1', 50.0, 2, FALSE, 4),
+('3', 80.0, 4, TRUE, 4),
+-- Дом 6 (Пушкина, 10)
+('7', 65.0, 3, TRUE, 6),
+('12', 42.0, 1, FALSE, 6),
+-- Дом 7 (Пушкина, 15)
+('2', 75.0, 4, TRUE, 7),
+('4', 55.5, 3, TRUE, 7),
+-- Дом 8 (Гагарина, 7)
+('1', 48.0, 2, TRUE, 8),
+('5', 68.0, 3, FALSE, 8),
+-- Дом 10 (Садовая, 8)
+('3', 52.0, 2, TRUE, 10),
+('6', 85.0, 5, TRUE, 10),
+-- Пустующие квартиры 
+('7', 40.0, 1, TRUE, 1),
+('8', 62.0, 3, FALSE, 2),
+('9', 44.0, 2, TRUE, 4);
+
+-- Жильцы
+INSERT INTO residents (last_name, first_name, middle_name, birth_date, passport_data, phone_number, family_role, apartment_id) VALUES
+
+-- Квартира 1 (Ленина 1-1) — 2 чел
+('Иванов', 'Сергей', 'Петрович', '1975-05-15', '4501 111111', '+7(900)111-11-11', 'Глава семьи', 1),
+('Иванова', 'Анна', 'Сергеевна', '1978-08-20', '4501 222222', '+7(900)222-22-22', 'Супруга', 1),
+
+-- Квартира 2 (Ленина 1-2) — 5 чел (многодетная: 3 детей)
+('Петров', 'Александр', 'Иванович', '1980-03-12', '4501 333333', '+7(900)333-33-33', 'Глава семьи', 2),
+('Петрова', 'Елена', 'Викторовна', '1982-07-07', '4501 444444', '+7(900)444-44-44', 'Супруга', 2),
+('Петров', 'Максим', 'Александрович', '2008-11-30', '4501 555555', '+7(900)555-55-55', 'Сын', 2),
+('Петрова', 'Ольга', 'Александровна', '2010-04-15', '4501 666666', '+7(900)666-66-66', 'Дочь', 2),
+('Петров', 'Дмитрий', 'Александрович', '2013-09-22', '4501 777777', '+7(900)777-77-77', 'Сын', 2),
+
+-- Квартира 3 (Ленина 1-3) — 1 чел
+('Сидоров', 'Иван', 'Алексеевич', '1965-02-10', '4501 888888', '+7(900)888-88-88', 'Глава семьи', 3),
+
+-- Квартира 5 (Мира 2-1) — 6 чел (многодетная: 4 детей)
+('Козлов', 'Дмитрий', 'Николаевич', '1978-06-18', '4501 999999', '+7(900)999-99-99', 'Глава семьи', 6),
+('Козлова', 'Татьяна', 'Павловна', '1980-12-01', '4502 111111', '+7(901)111-11-11', 'Супруга', 6),
+('Козлов', 'Андрей', 'Дмитриевич', '2006-03-05', '4502 222222', '+7(901)222-22-22', 'Сын', 6),
+('Козлова', 'Мария', 'Дмитриевна', '2009-07-14', '4502 333333', '+7(901)333-33-33', 'Дочь', 6),
+('Козлов', 'Павел', 'Дмитриевич', '2012-01-20', '4502 444444', '+7(901)444-44-44', 'Сын', 6),
+('Козлова', 'Анастасия', 'Дмитриевна', '2015-05-10', '4502 555555', '+7(901)555-55-55', 'Дочь', 6),
+
+-- Квартира 7 (Мира 2-3) — 2 чел
+('Морозов', 'Павел', 'Сергеевич', '1985-09-30', '4502 666666', '+7(901)666-66-66', 'Глава семьи', 7),
+('Морозова', 'Любовь', 'Андреевна', '1987-04-25', '4502 777777', '+7(901)777-77-77', 'Супруга', 7),
+
+-- Квартира 8 (Пушкина 10-7) — 2 чел
+('Волков', 'Максим', 'Олегович', '1970-11-15', '4502 888888', '+7(901)888-88-88', 'Глава семьи', 8),
+
+-- Квартира 12 (Гагарина 7-1) — 2 чел
+('Соколов', 'Андрей', 'Игоревич', '1990-05-20', '4503 111111', '+7(902)111-11-11', 'Глава семьи', 12),
+('Соколова', 'Марина', 'Павловна', '1992-10-10', '4503 222222', '+7(902)222-22-22', 'Супруга', 12);
+
+
+-- 3. Запросы
+-- 1: Адреса многодетных семей (от 3 детей)
+WITH children_counts AS (
+    SELECT
+        apartment_id,
+        COUNT(*) AS kids_count
+    FROM residents
+    WHERE family_role IN ('Сын', 'Дочь')
+    GROUP BY apartment_id
+    HAVING COUNT(*) >= 3
+)
+SELECT
+    s.street_name || ', д. ' || h.house_number || ', кв. ' || a.apartment_number AS "Адрес",
+    cc.kids_count AS "Количество детей",
+    a.total_area AS "Площадь (кв.м)",
+    a.rooms_count AS "Комнат"
+FROM children_counts cc
+JOIN apartments a ON cc.apartment_id = a.apartment_id
+JOIN houses h ON a.house_id = h.house_id
+JOIN streets s ON h.street_id = s.street_id
+ORDER BY cc.kids_count DESC;
+
+-- Запрос 2: Список пустующих квартир
+SELECT
+    s.street_name || ', д. ' || h.house_number || ', кв. ' || a.apartment_number AS "Адрес",
+    a.total_area AS "Площадь (кв.м)",
+    a.rooms_count AS "Комнат",
+    CASE WHEN a.is_privatized THEN 'Да' ELSE 'Нет' END AS "Приватизирована"
+FROM apartments a
+JOIN houses h ON a.house_id = h.house_id
+JOIN streets s ON h.street_id = s.street_id
+WHERE a.apartment_id NOT IN (
+    SELECT DISTINCT apartment_id FROM residents
+)
+ORDER BY s.street_name, h.house_number, a.apartment_number;
+
+-- Запрос 3: Удельный метраж на одного человека по каждой квартире
+WITH resident_counts AS (
+    SELECT
+        apartment_id,
+        COUNT(*) AS total_residents
+    FROM residents
+    GROUP BY apartment_id
+)
+SELECT
+    s.street_name || ', д. ' || h.house_number || ', кв. ' || a.apartment_number AS "Адрес",
+    a.total_area AS "Общая площадь (кв.м)",
+    COALESCE(rc.total_residents, 0) AS "Количество жильцов",
+    CASE
+        WHEN rc.total_residents > 0 THEN ROUND(a.total_area / rc.total_residents, 2)
+        ELSE NULL
+    END AS "Удельный метраж (кв.м/чел)"
+FROM apartments a
+JOIN houses h ON a.house_id = h.house_id
+JOIN streets s ON h.street_id = s.street_id
+LEFT JOIN resident_counts rc ON a.apartment_id = rc.apartment_id
+ORDER BY "Удельный метраж (кв.м/чел)" NULLS LAST;
+
+
+-- 4. Резервная копия бд
+
+/*
+ * Резервная копия создаётся командой pg_dump в терминале.
+ *
+ * Команда для создания:
+ * pg_dump -U postgres -h localhost -d zhilkontora -F c -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zhilkontora_6.backup"
+ *
+ * Параметры:
+ * -U postgres      — имя пользователя PostgreSQL
+ * -h localhost     — хост сервера
+ * -d zhilkontora   — имя базы данных
+ * -F c             — формат custom (сжатый)
+ * -f "путь"        — путь к файлу резервной копии
+ *
+ * Для восстановления:
+ * pg_restore -U postgres -h localhost -d zhilkontora "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zhilkontora_6.backup"
+ *
+ * Альтернатива — резервная копия в формате plain SQL:
+ * pg_dump -U postgres -h localhost -d zhilkontora -F p -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zhilkontora_6.sql"
+ */
+

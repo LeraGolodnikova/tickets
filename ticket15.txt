@@ -1,0 +1,217 @@
+CREATE DATABASE ticket15;
+
+-- 1.1 Виды страхования
+CREATE TABLE insurance_types (
+    type_id SERIAL PRIMARY KEY,
+    type_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- 1.2 Клиенты
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+
+    -- ФИО: кириллица, с большой буквы
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+
+    -- Паспорт: маска "9999 999999"
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+
+    -- Телефон: маска +7(XXX)XXX-XX-XX
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+
+    -- Адрес
+    address VARCHAR(200) NOT NULL
+);
+
+-- 1.3 Договоры страхования
+CREATE TABLE contracts (
+    contract_id SERIAL PRIMARY KEY,
+    contract_number VARCHAR(20) NOT NULL UNIQUE,
+    contract_date DATE NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL CHECK (end_date > start_date),
+    insured_item VARCHAR(200) NOT NULL,
+    sum_insured NUMERIC(12, 2) NOT NULL CHECK (sum_insured > 0),
+    client_id INT NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT,
+    type_id INT NOT NULL REFERENCES insurance_types(type_id) ON DELETE RESTRICT
+);
+
+-- =============================================
+-- БЛОК 2: ТЕСТОВЫЕ ДАННЫЕ (DML)
+-- =============================================
+
+-- 2.1 Виды страхования (10 записей)
+INSERT INTO insurance_types (type_name, description) VALUES
+('Автострахование', 'Страхование автомобиля'),
+('Страхование квартиры', 'Страхование недвижимости'),
+('Страхование дома', 'Страхование частного дома'),
+('Медицинское страхование', 'Добровольное медстрахование'),
+('Страхование жизни', 'Накопительное страхование жизни'),
+('Страхование от несчастных случаев', 'Защита от травм и увечий'),
+('Страхование багажа', 'Защита багажа при перевозке'),
+('Страхование гражданской ответственности', 'ОСАГО и ДСАГО'),
+('Страхование дачи', 'Страхование загородной недвижимости'),
+('Страхование животных', 'Ветеринарное страхование');
+
+-- 2.2 Клиенты (10 записей)
+INSERT INTO clients (last_name, first_name, middle_name, passport_data, phone_number, address) VALUES
+('Иванов', 'Сергей', 'Петрович', '4501 111111', '+7(900)111-11-11', 'г. Москва, ул. Ленина, д. 10, кв. 5'),
+('Петрова', 'Анна', 'Ивановна', '4501 222222', '+7(900)222-22-22', 'г. Москва, ул. Мира, д. 20, кв. 15'),
+('Сидоров', 'Михаил', 'Олегович', '4501 333333', '+7(900)333-33-33', 'г. Москва, ул. Пушкина, д. 5, кв. 8'),
+('Козлов', 'Дмитрий', 'Алексеевич', '4501 444444', '+7(900)444-44-44', 'г. Москва, ул. Тверская, д. 30, кв. 10'),
+('Морозова', 'Елена', 'Викторовна', '4501 555555', '+7(900)555-55-55', 'г. Москва, ул. Садовая, д. 8, кв. 3'),
+('Волков', 'Максим', 'Николаевич', '4501 666666', '+7(900)666-66-66', 'г. Москва, ул. Гагарина, д. 15, кв. 22'),
+('Соколова', 'Татьяна', 'Павловна', '4501 777777', '+7(900)777-77-77', 'г. Москва, ул. Цветная, д. 12, кв. 7'),
+('Кузнецова', 'Ольга', 'Сергеевна', '4501 888888', '+7(900)888-88-88', 'г. Москва, ул. Арбат, д. 18, кв. 4'),
+('Баранов', 'Алексей', 'Игнатьевич', '4501 999999', '+7(900)999-99-99', 'г. Москва, ул. Ордынка, д. 25, кв. 12'),
+('Медведев', 'Андрей', 'Степанович', '4502 111111', '+7(901)111-11-11', 'г. Москва, ул. Петровка, д. 14, кв. 11');
+
+-- 2.3 Договоры (14 записей)
+INSERT INTO contracts (contract_number, contract_date, start_date, end_date, insured_item, sum_insured, client_id, type_id) VALUES
+
+-- Автострахование (тип 1)
+('Д-001/2025', '2025-01-15', '2025-01-20', '2026-01-20', 'Toyota Camry, г/н А123ВС777', 1500000.00, 1, 1),
+('Д-002/2025', '2025-02-10', '2025-02-15', '2026-02-15', 'BMW X5, г/н М456ОР777', 3500000.00, 2, 1),
+('Д-003/2025', '2025-06-01', '2025-06-01', '2026-06-01', 'Lada Vesta, г/н О789НК777', 800000.00, 3, 1),
+('Д-004/2025', '2025-06-08', '2025-06-10', '2026-06-10', 'Kia Rio, г/н К111УЕ777', 950000.00, 5, 1),
+
+-- Страхование квартиры (тип 2)
+('Д-005/2025', '2025-02-20', '2025-03-01', '2028-03-01', 'Квартира по адресу: ул. Ленина, д. 10, кв. 5', 5000000.00, 1, 2),
+('Д-006/2025', '2025-03-15', '2025-03-20', '2027-03-20', 'Квартира по адресу: ул. Мира, д. 20, кв. 15', 4200000.00, 2, 2),
+('Д-007/2025', '2025-06-05', '2025-06-10', '2030-06-10', 'Квартира по адресу: ул. Пушкина, д. 5, кв. 8', 6500000.00, 3, 2),
+('Д-008/2025', '2025-06-10', '2025-06-15', '2029-06-15', 'Квартира по адресу: ул. Садовая, д. 8, кв. 3', 3800000.00, 5, 2),
+
+-- Медицинское страхование (тип 4)
+('Д-009/2025', '2025-04-01', '2025-04-01', '2026-04-01', 'Полис ДМС', 500000.00, 4, 4),
+
+-- Страхование дома (тип 3)
+('Д-010/2025', '2025-06-03', '2025-06-05', '2030-06-05', 'Частный дом: ул. Парковая, д. 5', 8000000.00, 6, 3),
+
+-- ОСАГО (тип 8)
+('Д-011/2025', '2025-05-10', '2025-05-15', '2026-05-15', 'Renault Logan, г/н Е222ТР777', 400000.00, 7, 8),
+('Д-012/2025', '2025-06-07', '2025-06-07', '2026-06-07', 'Hyundai Solaris, г/н С333ММ777', 400000.00, 8, 8),
+
+-- Страхование дачи (тип 9)
+('Д-013/2025', '2025-06-09', '2025-06-10', '2028-06-10', 'Дача: СНТ "Ромашка", уч. 15', 2500000.00, 9, 9),
+
+-- Страхование жизни (тип 5)
+('Д-014/2025', '2026-06-01', '2025-06-01', '2035-06-01', 'Накопительное страхование жизни', 1000000.00, 10, 5);
+
+INSERT INTO contracts (contract_number, contract_date, start_date, end_date, insured_item, sum_insured, client_id, type_id) VALUES
+-- Страхование жизни (тип 5)
+('Д-015/2025', '2026-06-01', '2025-06-01', '2035-06-01', 'Накопительное страхование жизни', 1000000.00, 10, 5);
+
+-- =============================================
+-- БЛОК 3: ЗАПРОСЫ (DQL)
+-- =============================================
+
+-- Запрос 3.1: Клиенты, заключившие договор на страхование машины
+/*
+ * Страхование машины — это типы: Автострахование (1) и ОСАГО (8).
+ */
+SELECT
+    'Страхование машины' AS "Запрос 3.1",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО клиента",
+    c.phone_number AS "Телефон",
+    cnt.contract_number AS "Номер договора",
+    cnt.insured_item AS "Объект страхования",
+    it.type_name AS "Вид страхования",
+    cnt.sum_insured AS "Страховая сумма (руб.)"
+FROM clients c
+JOIN contracts cnt ON c.client_id = cnt.client_id
+JOIN insurance_types it ON cnt.type_id = it.type_id
+WHERE cnt.type_id IN (1, 8)
+ORDER BY c.last_name;
+
+-- Запрос 3.2: Клиенты, заключившие страховку в текущем месяце
+/*
+ * Текущий месяц — EXTRACT(MONTH FROM CURRENT_DATE).
+ * Для демонстрации: в данных есть договоры за июнь (месяц 6).
+ * Если запускается в июне — покажет реальные данные.
+ */
+SELECT
+    'Договоры в текущем месяце' AS "Запрос 3.2",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО клиента",
+    c.phone_number AS "Телефон",
+    cnt.contract_number AS "Номер договора",
+    cnt.contract_date AS "Дата заключения",
+    it.type_name AS "Вид страхования",
+    cnt.insured_item AS "Объект страхования"
+FROM clients c
+JOIN contracts cnt ON c.client_id = cnt.client_id
+JOIN insurance_types it ON cnt.type_id = it.type_id
+WHERE EXTRACT(MONTH FROM cnt.contract_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+  AND EXTRACT(YEAR FROM cnt.contract_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+ORDER BY cnt.contract_date;
+
+-- Запрос 3.3: Клиенты, застраховавшие квартиру на заданное количество лет
+/*
+ * Заданное количество лет: для примера — 5 лет.
+ * Страхование квартиры — тип 2.
+ * Срок в годах = EXTRACT(YEAR FROM end_date) - EXTRACT(YEAR FROM start_date).
+ */
+SELECT
+    'Страхование квартиры на 5 лет' AS "Запрос 3.3",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО клиента",
+    c.address AS "Адрес клиента",
+    cnt.insured_item AS "Объект страхования",
+    cnt.start_date AS "Начало",
+    cnt.end_date AS "Окончание",
+    EXTRACT(YEAR FROM cnt.end_date) - EXTRACT(YEAR FROM cnt.start_date) AS "Срок (лет)",
+    cnt.sum_insured AS "Страховая сумма (руб.)"
+FROM clients c
+JOIN contracts cnt ON c.client_id = cnt.client_id
+JOIN insurance_types it ON cnt.type_id = it.type_id
+WHERE cnt.type_id = 2
+  AND EXTRACT(YEAR FROM cnt.end_date) - EXTRACT(YEAR FROM cnt.start_date) = 5
+ORDER BY c.last_name;
+
+
+-- =============================================
+-- БЛОК 4: ФУНКЦИЯ ШИФРОВАНИЯ ЛИЧНЫХ ДАННЫХ
+-- =============================================
+
+/*
+ * Функция encrypt_personal_data
+ * Шифрует личные данные клиента: ФИО, телефон, паспорт.
+ * Принимает: строку с данными (TEXT)
+ * Возвращает: зашифрованный хеш (TEXT, base64)
+ */
+CREATE OR REPLACE FUNCTION encrypt_personal_data(open_data TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    secret_key TEXT := 'InsuranceSecretKey2024';
+BEGIN
+    -- Проверка на NULL
+    IF open_data IS NULL OR open_data = '' THEN
+        RETURN NULL;
+    END IF;
+
+    -- Шифрование: SHA-256
+    RETURN encode(
+        sha256(convert_to(open_data || secret_key, 'UTF8')),
+        'base64'
+    );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- =============================================
+-- ДЕМОНСТРАЦИЯ: ШИФРОВАНИЕ ДАННЫХ ВСЕХ КЛИЕНТОВ
+-- =============================================
+
+SELECT
+    'ШИФРОВАНИЕ ДАННЫХ' AS "Пункт 4",
+    c.client_id AS "ID",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО (открыто)",
+    encrypt_personal_data(c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '')) AS "ФИО (зашифровано)",
+    c.phone_number AS "Телефон (открыто)",
+    encrypt_personal_data(c.phone_number) AS "Телефон (зашифровано)",
+    c.passport_data AS "Паспорт (открыто)",
+    encrypt_personal_data(c.passport_data) AS "Паспорт (зашифровано)"
+FROM clients c
+ORDER BY c.client_id;
+
+

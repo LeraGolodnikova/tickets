@@ -1,0 +1,158 @@
+-- 1. Создание бд
+CREATE DATABASE ticket3;
+
+-- Кафедры
+CREATE TABLE kafedry (
+    kafedra_id SERIAL PRIMARY KEY,
+    kafedra_name VARCHAR(150) NOT NULL UNIQUE CHECK (kafedra_name ~ '^[А-ЯЁ]'),
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$')
+);
+
+-- Помещения
+CREATE TABLE pomeshcheniya (
+    pomeshchenie_id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL,
+    room_name VARCHAR(100) NOT NULL,
+    area NUMERIC(7, 2) NOT NULL CHECK (area > 0),
+    computers_count INT DEFAULT 0 CHECK (computers_count >= 0),
+    kafedra_id INT NOT NULL REFERENCES kafedry(kafedra_id) ON DELETE RESTRICT,
+    UNIQUE (room_number, kafedra_id)
+);
+
+-- Сотрудники
+CREATE TABLE sotrudniki (
+    sotrudnik_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    birth_date DATE NOT NULL,
+    home_address VARCHAR(200) NOT NULL,
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+    work_phone VARCHAR(16) NOT NULL UNIQUE CHECK (work_phone ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    home_phone VARCHAR(16) CHECK (home_phone ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$' OR home_phone IS NULL),
+    position VARCHAR(100) NOT NULL,
+    kafedra_id INT NOT NULL REFERENCES kafedry(kafedra_id) ON DELETE RESTRICT
+);
+
+-- 2. Вставка тестовых данных
+-- Кафедры
+INSERT INTO kafedry (kafedra_name, phone_number) VALUES
+('Кафедра высшей математики', '+7(900)111-22-33'),
+('Кафедра физики', '+7(900)222-33-44'),
+('Кафедра информатики', '+7(900)333-44-55'),
+('Кафедра иностранных языков', '+7(900)444-55-66'),
+('Кафедра истории', '+7(900)555-66-77'),
+('Кафедра химии', '+7(900)666-77-88'),
+('Кафедра биологии', '+7(900)777-88-99'),
+('Кафедра экономики', '+7(900)888-99-00'),
+('Кафедра философии', '+7(900)999-00-11'),
+('Кафедра физвоспитания', '+7(900)000-11-22');
+
+-- Помещения
+INSERT INTO pomeshcheniya (room_number, room_name, area, computers_count, kafedra_id) VALUES
+('301', 'Компьютерный класс №1', 60.5, 15, 3),
+('302', 'Компьютерный класс №2', 55.0, 12, 3),
+('303', 'Серверная', 20.0, 5, 3),
+('101', 'Лекционная аудитория', 70.0, 2, 1),
+('102', 'Кабинет преподавателей', 35.5, 5, 1),
+('201', 'Лаборатория физики', 80.0, 3, 2),
+('202', 'Кабинет физики', 45.0, 1, 2),
+('401', 'Лингафонный кабинет', 50.0, 20, 4),
+('402', 'Кабинет преподавателей', 30.0, 4, 4),
+('501', 'Компьютерный класс', 65.0, 18, 8),
+('601', 'Химическая лаборатория', 90.0, 2, 6),
+('701', 'Кабинет истории', 40.0, 1, 5);
+
+-- Сотрудники 
+INSERT INTO sotrudniki (last_name, first_name, middle_name, birth_date, home_address, passport_data, work_phone, home_phone, position, kafedra_id) VALUES
+('Иванов', 'Сергей', 'Петрович', '1974-05-15', 'г. Москва, ул. Ленина, д. 10, кв. 5', '4501 123456', '+7(901)111-11-11', '+7(902)111-11-11', 'Заведующий кафедрой', 3),
+('Петрова', 'Анна', 'Ивановна', '1976-08-20', 'г. Москва, ул. Мира, д. 20, кв. 15', '4502 654321', '+7(901)222-22-22', '+7(902)222-22-22', 'Доцент', 3),
+('Сидоров', 'Иван', 'Алексеевич', '1960-03-12', 'г. Москва, ул. Пушкина, д. 5, кв. 8', '4503 111222', '+7(901)333-33-33', NULL, 'Профессор', 3),
+('Федоров', 'Максим', NULL, '1990-11-30', 'г. Москва, ул. Гагарина, д. 15, кв. 22', '4510 999888', '+7(901)444-44-44', '+7(902)333-33-33', 'Ассистент', 3),
+('Козлов', 'Дмитрий', 'Сергеевич', '1965-07-07', 'г. Москва, ул. Тверская, д. 30, кв. 10', '4504 333444', '+7(901)555-55-55', '+7(902)444-44-44', 'Заведующий кафедрой', 1),
+('Морозова', 'Елена', NULL, '1975-12-01', 'г. Москва, ул. Садовая, д. 8, кв. 3', '4505 555666', '+7(901)666-66-66', NULL, 'Доцент', 1),
+('Волков', 'Павел', 'Николаевич', '1968-02-14', 'г. Москва, ул. Цветная, д. 12, кв. 7', '4511 777666', '+7(901)777-77-77', '+7(902)555-55-55', 'Старший преподаватель', 1),
+('Соколова', 'Татьяна', 'Павловна', '1974-04-05', 'г. Москва, ул. Ордынка, д. 25, кв. 12', '4506 777888', '+7(901)888-88-88', '+7(902)666-66-66', 'Заведующий кафедрой', 2),
+('Баранов', 'Алексей', 'Игнатьевич', '1971-09-30', 'г. Москва, ул. Арбат, д. 18, кв. 4', '4507 999000', '+7(901)999-99-99', '+7(902)777-77-77', 'Доцент', 2),
+('Кузнецова', 'Ольга', 'Викторовна', '1982-02-14', 'г. Москва, ул. Пречистенка, д. 7, кв. 9', '4508 131415', '+7(901)000-00-00', NULL, 'Заведующий кафедрой', 4),
+('Медведев', 'Андрей', 'Степанович', '1978-06-18', 'г. Москва, ул. Петровка, д. 14, кв. 11', '4509 161718', '+7(901)101-11-11', '+7(902)888-88-88', 'Старший преподаватель', 4),
+('Васильева', 'Любовь', 'Андреевна', '1969-11-25', 'г. Москва, ул. Никольская, д. 3, кв. 6', '4512 192021', '+7(901)102-22-22', '+7(902)999-99-99', 'Заведующий кафедрой', 8),
+('Николаев', 'Михаил', NULL, '1973-05-10', 'г. Москва, ул. Пятницкая, д. 9, кв. 2', '4513 212223', '+7(901)103-33-33', NULL, 'Доцент', 5),
+('Алексеева', 'Ирина', 'Сергеевна', '1974-07-22', 'г. Москва, ул. Полянка, д. 11, кв. 14', '4514 242526', '+7(901)104-44-44', '+7(902)100-00-00', 'Заведующий кафедрой', 6);
+
+
+-- 3. Запросы
+-- Запрос 1: Поиск работника по неполным данным
+SELECT
+    s.last_name || ' ' || s.first_name || COALESCE(' ' || s.middle_name, '') AS "ФИО",
+    k.kafedra_name AS "Кафедра",
+    s.birth_date AS "Дата рождения",
+    s.home_address AS "Домашний адрес",
+    s.work_phone AS "Рабочий телефон",
+    COALESCE(s.home_phone, 'не указан') AS "Домашний телефон"
+FROM sotrudniki s
+JOIN kafedry k ON s.kafedra_id = k.kafedra_id
+WHERE s.last_name ILIKE '%Иван%'
+   OR s.first_name ILIKE '%Иван%'
+   OR s.middle_name ILIKE '%Иван%'
+ORDER BY s.last_name;
+
+-- Запрос 2: Общее количество компьютеров по кафедрам
+SELECT
+    k.kafedra_name AS "Кафедра",
+    COALESCE(SUM(p.computers_count), 0) AS "Всего компьютеров"
+FROM kafedry k
+LEFT JOIN pomeshcheniya p ON k.kafedra_id = p.kafedra_id
+GROUP BY k.kafedra_id, k.kafedra_name
+ORDER BY "Всего компьютеров" DESC;
+
+-- Запрос 3: Средний возраст работников университета
+SELECT
+    ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date))), 1) AS "Средний возраст (лет)",
+    COUNT(*) AS "Всего сотрудников"
+FROM sotrudniki;
+
+-- Запрос 4: Юбиляры (50, 55, 60 лет) в следующем месяце
+SELECT
+    s.last_name || ' ' || s.first_name || COALESCE(' ' || s.middle_name, '') AS "ФИО",
+    s.birth_date AS "Дата рождения",
+    EXTRACT(YEAR FROM AGE(DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month', s.birth_date)) AS "Исполнится лет",
+    TO_CHAR(DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month', 'Month YYYY') AS "Месяц юбилея"
+FROM sotrudniki s
+WHERE EXTRACT(MONTH FROM s.birth_date) = EXTRACT(MONTH FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'))
+  AND EXTRACT(YEAR FROM AGE(DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month', s.birth_date)) IN (50, 55, 60)
+ORDER BY "Исполнится лет";
+
+
+-- 4. Функция шифрования
+CREATE OR REPLACE FUNCTION encrypt_passport(open_passport TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    secret_key TEXT := 'UniversitySecretKey2024';
+BEGIN
+    -- Проверка на NULL или пустую строку
+    IF open_passport IS NULL OR open_passport = '' THEN
+        RAISE EXCEPTION 'Паспортные данные не могут быть пустыми';
+    END IF;
+    -- Проверка формата: 4 цифры, пробел, 6 цифр
+    IF open_passport !~ '^\d{4} \d{6}$' THEN
+        RAISE EXCEPTION 'Неверный формат паспортных данных. Ожидается: 9999 999999';
+    END IF;
+    -- Шифрование: SHA-256 от (паспорт + секретный ключ)
+    RETURN encode(
+        sha256(convert_to(open_passport || secret_key, 'UTF8')),
+        'base64'
+    );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Демонстрация функции
+-- Показываем открытые и зашифрованные паспортные данные
+SELECT
+    s.sotrudnik_id AS "ID",
+    s.last_name AS "Фамилия",
+    s.passport_data AS "Открытые паспортные данные",
+    encrypt_passport(s.passport_data) AS "Зашифрованные паспортные данные"
+FROM sotrudniki s
+ORDER BY s.sotrudnik_id;
+

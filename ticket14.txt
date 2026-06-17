@@ -1,0 +1,210 @@
+CREATE DATABASE ticket14;
+
+-- 1.1 Этажи
+CREATE TABLE floors (
+    floor_id SERIAL PRIMARY KEY,
+    floor_number INT NOT NULL UNIQUE CHECK (floor_number > 0)
+);
+
+-- 1.2 Комнаты
+CREATE TABLE rooms (
+    room_id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL UNIQUE,
+    total_area NUMERIC(5, 2) CHECK (total_area > 0),
+    beds_count INT NOT NULL CHECK (beds_count > 0),
+    has_broken_windows BOOLEAN NOT NULL DEFAULT FALSE,
+    floor_id INT NOT NULL REFERENCES floors(floor_id) ON DELETE RESTRICT
+);
+
+-- 1.3 Проживающие
+CREATE TABLE residents (
+    resident_id SERIAL PRIMARY KEY,
+
+    -- ФИО: кириллица, с большой буквы
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+
+    -- Пол
+    gender CHAR(1) NOT NULL CHECK (gender IN ('М', 'Ж')),
+
+    -- Дата рождения
+    birth_date DATE NOT NULL,
+
+    -- Паспорт: маска "9999 999999"
+    passport_data VARCHAR(11) UNIQUE CHECK (passport_data IS NULL OR passport_data ~ '^\d{4} \d{6}$'),
+
+    -- Телефон: маска +7(XXX)XXX-XX-XX
+    phone_number VARCHAR(16) UNIQUE CHECK (phone_number IS NULL OR phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+
+    -- Является ли ребёнком
+    is_child BOOLEAN NOT NULL DEFAULT FALSE,
+
+    -- Комната
+    room_id INT NOT NULL REFERENCES rooms(room_id) ON DELETE RESTRICT
+);
+
+-- =============================================
+-- БЛОК 2: ТЕСТОВЫЕ ДАННЫЕ (DML)
+-- =============================================
+
+-- 2.1 Этажи (10 записей)
+INSERT INTO floors (floor_number) VALUES
+(1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
+
+-- 2.2 Комнаты (10 записей)
+INSERT INTO rooms (room_number, total_area, beds_count, has_broken_windows, floor_id) VALUES
+('101', 18.5, 3, FALSE, 1),
+('102', 20.0, 3, TRUE, 1),
+('103', 22.5, 2, FALSE, 1),
+('201', 18.0, 3, TRUE, 2),
+('202', 24.0, 2, FALSE, 2),
+('203', 19.5, 3, FALSE, 2),
+('301', 21.0, 3, TRUE, 3),
+('302', 20.5, 2, FALSE, 3),
+('303', 23.0, 3, FALSE, 3),
+('304', 17.5, 2, TRUE, 3);
+
+-- 2.3 Проживающие (14 записей)
+INSERT INTO residents (last_name, first_name, middle_name, gender, birth_date, passport_data, phone_number, is_child, room_id) VALUES
+
+-- Комната 101: 2 взрослых (муж + жена) — заполнено 2 из 3 мест
+('Иванов', 'Сергей', 'Петрович', 'М', '1975-05-15', '4501 111111', '+7(900)111-11-11', FALSE, 1),
+('Иванова', 'Анна', 'Сергеевна', 'Ж', '1978-08-20', '4501 222222', '+7(900)222-22-22', FALSE, 1),
+
+-- Комната 102: женщина + ребёнок (стёкла выбиты) — заполнено 2 из 3
+('Петрова', 'Елена', 'Викторовна', 'Ж', '1980-03-12', '4501 333333', '+7(900)333-33-33', FALSE, 2),
+('Петров', 'Максим', 'Александрович', 'М', '2010-11-30', NULL, NULL, TRUE, 2),
+
+-- Комната 103: 1 мужчина — заполнено 1 из 2
+('Сидоров', 'Иван', 'Алексеевич', 'М', '1965-02-10', '4501 444444', '+7(900)444-44-44', FALSE, 3),
+
+-- Комната 201: женщина + 2 детей (стёкла выбиты) — заполнено 3 из 3
+('Козлова', 'Татьяна', 'Павловна', 'Ж', '1982-07-07', '4501 555555', '+7(900)555-55-55', FALSE, 4),
+('Козлов', 'Артём', 'Дмитриевич', 'М', '2011-04-15', NULL, NULL, TRUE, 4),
+('Козлова', 'Мария', 'Дмитриевна', 'Ж', '2014-09-22', NULL, NULL, TRUE, 4),
+
+-- Комната 202: 1 мужчина — заполнено 1 из 2
+('Морозов', 'Павел', 'Сергеевич', 'М', '1985-09-30', '4501 666666', '+7(900)666-66-66', FALSE, 5),
+
+-- Комната 301: мужчина + женщина (стёкла выбиты) — заполнено 2 из 3
+('Волков', 'Максим', 'Олегович', 'М', '1970-11-15', '4501 777777', '+7(900)777-77-77', FALSE, 7),
+('Волкова', 'Ольга', 'Ивановна', 'Ж', '1972-08-30', '4501 888888', '+7(900)888-88-88', FALSE, 7),
+
+-- Комната 302: 1 женщина — заполнено 1 из 2
+('Соколова', 'Татьяна', 'Павловна', 'Ж', '1990-05-20', '4501 999999', '+7(900)999-99-99', FALSE, 8),
+
+-- Комната 303: 1 мужчина — заполнено 1 из 3
+('Баранов', 'Алексей', 'Игнатьевич', 'М', '1988-12-10', '4502 111111', '+7(901)111-11-11', FALSE, 9),
+
+-- Комната 304: 1 женщина + 1 ребёнок (стёкла выбиты) — заполнено 2 из 2
+('Николаева', 'Валентина', 'Фёдоровна', 'Ж', '1983-06-15', '4502 222222', '+7(901)222-22-22', FALSE, 10),
+('Николаев', 'Дмитрий', 'Павлович', 'М', '2012-03-20', NULL, NULL, TRUE, 10);
+
+
+-- =============================================
+-- БЛОК 3: ЗАПРОСЫ (DQL)
+-- =============================================
+
+-- Запрос 3.1: Комнаты с выбитыми стёклами, где проживают дети
+SELECT
+    'Стёкла выбиты + дети' AS "Запрос 3.1",
+    r.room_number AS "Комната",
+    f.floor_number AS "Этаж",
+    r.total_area AS "Площадь (кв.м)",
+    COUNT(res.resident_id) FILTER (WHERE res.is_child = TRUE) AS "Детей",
+    COUNT(res.resident_id) FILTER (WHERE res.is_child = FALSE) AS "Взрослых"
+FROM rooms r
+JOIN floors f ON r.floor_id = f.floor_id
+JOIN residents res ON r.room_id = res.room_id
+WHERE r.has_broken_windows = TRUE
+GROUP BY r.room_number, f.floor_number, r.total_area
+HAVING COUNT(res.resident_id) FILTER (WHERE res.is_child = TRUE) > 0
+ORDER BY r.room_number;
+
+-- Запрос 3.2: Сводка по этажам — количество мужчин и женщин
+SELECT
+    'Мужчины/женщины по этажам' AS "Запрос 3.2",
+    f.floor_number AS "Этаж",
+    COUNT(res.resident_id) FILTER (WHERE res.gender = 'М') AS "Мужчин",
+    COUNT(res.resident_id) FILTER (WHERE res.gender = 'Ж') AS "Женщин",
+    COUNT(res.resident_id) AS "Всего"
+FROM floors f
+LEFT JOIN rooms r ON f.floor_id = r.floor_id
+LEFT JOIN residents res ON r.room_id = res.room_id
+GROUP BY f.floor_number
+ORDER BY f.floor_number;
+
+-- Запрос 3.3: Свободные места по этажам
+/*
+ * Свободных мест = общее количество мест в комнатах этажа
+ * минус количество проживающих в этих комнатах.
+ */
+WITH floor_stats AS (
+    SELECT
+        f.floor_number,
+        SUM(r.beds_count) AS total_beds,
+        COUNT(res.resident_id) AS occupied
+    FROM floors f
+    JOIN rooms r ON f.floor_id = r.floor_id
+    LEFT JOIN residents res ON r.room_id = res.room_id
+    GROUP BY f.floor_number
+)
+SELECT
+    'Свободные места по этажам' AS "Запрос 3.3",
+    fs.floor_number AS "Этаж",
+    fs.total_beds AS "Всего мест",
+    fs.occupied AS "Занято",
+    fs.total_beds - fs.occupied AS "Свободно"
+FROM floor_stats fs
+ORDER BY fs.floor_number;
+
+
+-- =============================================
+-- БЛОК 4: ФУНКЦИЯ ШИФРОВАНИЯ ТЕЛЕФОНОВ
+-- =============================================
+
+/*
+ * Функция encrypt_phone
+ * Шифрует номер телефона проживающего.
+ * Принимает: открытый номер телефона (TEXT)
+ * Возвращает: зашифрованный хеш (TEXT, base64)
+ */
+CREATE OR REPLACE FUNCTION encrypt_phone(open_phone TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    secret_key TEXT := 'DormitoryPhoneKey2024';
+BEGIN
+    -- Проверка на NULL или пустую строку
+    IF open_phone IS NULL OR open_phone = '' THEN
+        RETURN NULL;
+    END IF;
+
+    -- Проверка формата
+    IF open_phone !~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$' THEN
+        RAISE EXCEPTION 'Неверный формат номера телефона. Ожидается: +7(XXX)XXX-XX-XX';
+    END IF;
+
+    -- Шифрование: SHA-256
+    RETURN encode(
+        sha256(convert_to(open_phone || secret_key, 'UTF8')),
+        'base64'
+    );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- =============================================
+-- ДЕМОНСТРАЦИЯ: ШИФРОВАНИЕ ТЕЛЕФОНОВ ВСЕХ ПРОЖИВАЮЩИХ
+-- =============================================
+
+SELECT
+    'ШИФРОВАНИЕ ТЕЛЕФОНОВ' AS "Пункт 4",
+    res.last_name || ' ' || res.first_name || COALESCE(' ' || res.middle_name, '') AS "ФИО",
+    r.room_number AS "Комната",
+    COALESCE(res.phone_number, 'нет телефона') AS "Открытый номер",
+    encrypt_phone(res.phone_number) AS "Зашифрованный номер"
+FROM residents res
+JOIN rooms r ON res.room_id = r.room_id
+ORDER BY res.last_name;
+
+

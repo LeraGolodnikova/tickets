@@ -1,0 +1,235 @@
+-- 1. Создание бд
+CREATE DATABASE ticket12;
+
+-- Этажи
+CREATE TABLE floors (
+    floor_id SERIAL PRIMARY KEY,
+    floor_number INT NOT NULL UNIQUE CHECK (floor_number BETWEEN 1 AND 10),
+    senior_name VARCHAR(150)
+);
+
+-- Комнаты
+CREATE TABLE rooms (
+    room_id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL UNIQUE,
+    total_area NUMERIC(5, 2) CHECK (total_area > 0),
+    has_broken_windows BOOLEAN NOT NULL DEFAULT FALSE,
+    floor_id INT NOT NULL REFERENCES floors(floor_id) ON DELETE RESTRICT
+);
+
+-- Жильцы
+CREATE TABLE residents (
+    resident_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    birth_date DATE NOT NULL,
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    is_child BOOLEAN NOT NULL DEFAULT FALSE,
+    room_id INT NOT NULL REFERENCES rooms(room_id) ON DELETE RESTRICT
+);
+
+-- Договоры аренды/собственности
+CREATE TABLE contracts (
+    contract_id SERIAL PRIMARY KEY,
+    contract_type VARCHAR(50) NOT NULL CHECK (contract_type IN ('Аренда', 'Собственность')),
+    contract_date DATE NOT NULL,
+    contract_number VARCHAR(20) NOT NULL UNIQUE,
+    resident_id INT NOT NULL REFERENCES residents(resident_id) ON DELETE RESTRICT,
+    room_id INT NOT NULL REFERENCES rooms(room_id) ON DELETE RESTRICT,
+    UNIQUE (room_id)
+);
+
+-- Оплата за проживание
+CREATE TABLE payments (
+    payment_id SERIAL PRIMARY KEY,
+    payment_date DATE NOT NULL,
+    payment_month DATE NOT NULL,
+    amount NUMERIC(8, 2) NOT NULL CHECK (amount > 0),
+    is_paid BOOLEAN NOT NULL DEFAULT FALSE,
+    resident_id INT NOT NULL REFERENCES residents(resident_id) ON DELETE RESTRICT
+);
+
+-- 2. Заполнение тестовыми данными
+
+-- Этажи 
+INSERT INTO floors (floor_number, senior_name) VALUES
+(1, 'Иванов Сергей Петрович'),
+(2, 'Петрова Анна Ивановна'),
+(3, 'Сидоров Иван Алексеевич'),
+(4, 'Козлов Дмитрий Николаевич'),
+(5, 'Морозов Павел Сергеевич'),
+(6, 'Волков Максим Олегович'),
+(7, 'Соколова Татьяна Павловна'),
+(8, 'Кузнецова Ольга Викторовна'),
+(9, 'Баранов Алексей Игнатьевич'),
+(10, 'Медведев Андрей Степанович');
+
+-- Комнаты 
+INSERT INTO rooms (room_number, total_area, has_broken_windows, floor_id) VALUES
+('101', 18.5, FALSE, 1),
+('102', 20.0, TRUE, 1),
+('201', 22.5, FALSE, 2),
+('202', 18.0, TRUE, 2),
+('301', 24.0, FALSE, 3),
+('302', 19.5, TRUE, 3),
+('401', 21.0, FALSE, 4),
+('501', 20.5, TRUE, 5),
+('601', 23.0, FALSE, 6),
+('701', 17.5, TRUE, 7);
+
+-- Жильцы
+INSERT INTO residents (last_name, first_name, middle_name, birth_date, passport_data, phone_number, is_child, room_id) VALUES
+
+-- Комната 101: 2 взрослых
+('Иванов', 'Сергей', 'Петрович', '1975-05-15', '4501 111111', '+7(900)111-11-11', FALSE, 1),
+('Иванова', 'Анна', 'Сергеевна', '1978-08-20', '4501 222222', '+7(900)222-22-22', FALSE, 1),
+
+-- Комната 102: взрослый + ребёнок (стёкла выбиты)
+('Петрова', 'Елена', 'Викторовна', '1980-03-12', '4501 333333', '+7(900)333-33-33', FALSE, 2),
+('Петров', 'Максим', 'Александрович', '2010-11-30', '4501 555555', '+7(900)555-55-55', TRUE, 2),
+
+-- Комната 201: 1 взрослый
+('Сидоров', 'Иван', 'Алексеевич', '1965-02-10', '4501 444444', '+7(900)444-44-44', FALSE, 3),
+
+-- Комната 202: взрослый + 2 детей (стёкла выбиты)
+('Козлова', 'Татьяна', 'Павловна', '1982-07-07', '4501 666666', '+7(900)666-66-66', FALSE, 4),
+('Козлов', 'Артём', 'Дмитриевич', '2011-04-15', '4501 777777', '+7(900)777-77-77', TRUE, 4),
+('Козлова', 'Мария', 'Дмитриевна', '2014-09-22', '4501 888888', '+7(900)888-88-88', TRUE, 4),
+
+-- Комната 301: 1 взрослый
+('Морозов', 'Павел', 'Сергеевич', '1985-09-30', '4501 999999', '+7(900)999-99-99', FALSE, 5),
+
+-- Комната 302: взрослый + ребёнок (стёкла выбиты)
+('Волкова', 'Ольга', 'Ивановна', '1988-12-01', '4502 111111', '+7(901)111-11-11', FALSE, 6),
+('Волков', 'Андрей', 'Максимович', '2012-05-20', '4502 222222', '+7(901)222-22-22', TRUE, 6),
+
+-- Комната 401: 1 взрослый
+('Соколова', 'Татьяна', 'Павловна', '1970-11-15', '4502 333333', '+7(901)333-33-33', FALSE, 7);
+
+-- Договоры 
+INSERT INTO contracts (contract_type, contract_date, contract_number, resident_id, room_id) VALUES
+('Собственность', '2010-03-15', 'Д-001/2010', 1, 1),
+('Аренда', '2023-01-10', 'Д-002/2023', 3, 2),
+('Собственность', '2012-07-20', 'Д-003/2012', 5, 3),
+('Аренда', '2022-09-05', 'Д-004/2022', 6, 4),
+('Собственность', '2015-11-30', 'Д-005/2015', 9, 5),
+('Аренда', '2023-06-15', 'Д-006/2023', 10, 6),
+('Собственность', '2018-02-28', 'Д-007/2018', 12, 7),
+('Аренда', '2024-01-20', 'Д-008/2024', 2, 8),
+('Собственность', '2020-05-10', 'Д-009/2020', 4, 9),
+('Аренда', '2023-12-01', 'Д-010/2023', 7, 10);
+
+-- Оплата
+INSERT INTO payments (payment_date, payment_month, amount, is_paid, resident_id) VALUES
+-- Иванов: платит исправно
+('2025-01-05', '2025-01-01', 3500.00, TRUE, 1),
+('2025-02-03', '2025-02-01', 3500.00, TRUE, 1),
+
+-- Петрова (ком. 102): долг за январь и февраль
+('2025-01-10', '2025-01-01', 3500.00, FALSE, 3),
+('2025-02-10', '2025-02-01', 3500.00, FALSE, 3),
+
+-- Сидоров: платит
+('2025-01-07', '2025-01-01', 3500.00, TRUE, 5),
+('2025-02-05', '2025-02-01', 3500.00, TRUE, 5),
+
+-- Козлова (ком. 202): долг за декабрь, январь, февраль (3 месяца)
+('2024-12-10', '2024-12-01', 3500.00, FALSE, 6),
+('2025-01-10', '2025-01-01', 3500.00, FALSE, 6),
+('2025-02-10', '2025-02-01', 3500.00, FALSE, 6),
+
+-- Морозов: долг за январь и февраль
+('2025-01-10', '2025-01-01', 3500.00, FALSE, 9),
+('2025-02-10', '2025-02-01', 3500.00, FALSE, 9),
+
+-- Волкова (ком. 302): платит
+('2025-01-08', '2025-01-01', 3500.00, TRUE, 10);
+
+
+-- 3. Запросы
+-- Запрос 1: Список старших по этажу
+SELECT
+    f.floor_number AS "Этаж",
+    COALESCE(f.senior_name, 'не назначен') AS "Старший по этажу",
+    COUNT(r.room_id) AS "Количество комнат"
+FROM floors f
+LEFT JOIN rooms r ON f.floor_id = r.floor_id
+GROUP BY f.floor_number, f.senior_name
+ORDER BY f.floor_number;
+
+-- Запрос 2: Должники за 2 месяца и более
+WITH unpaid_counts AS (
+    SELECT
+        resident_id,
+        COUNT(*) AS unpaid_months
+    FROM payments
+    WHERE is_paid = FALSE
+    GROUP BY resident_id
+    HAVING COUNT(*) >= 2
+)
+SELECT
+    res.last_name || ' ' || res.first_name || COALESCE(' ' || res.middle_name, '') AS "ФИО",
+    r.room_number AS "Комната",
+    f.floor_number AS "Этаж",
+    uc.unpaid_months AS "Месяцев долга",
+    uc.unpaid_months * 3500.00 AS "Сумма долга (руб.)"
+FROM unpaid_counts uc
+JOIN residents res ON uc.resident_id = res.resident_id
+JOIN rooms r ON res.room_id = r.room_id
+JOIN floors f ON r.floor_id = f.floor_id
+ORDER BY uc.unpaid_months DESC;
+
+-- Запрос 3: Комнаты с выбитыми стёклами, где проживают дети
+SELECT
+    r.room_number AS "Комната",
+    f.floor_number AS "Этаж",
+    r.total_area AS "Площадь (кв.м)",
+    COUNT(res.resident_id) FILTER (WHERE res.is_child = TRUE) AS "Количество детей",
+    COUNT(res.resident_id) FILTER (WHERE res.is_child = FALSE) AS "Количество взрослых"
+FROM rooms r
+JOIN floors f ON r.floor_id = f.floor_id
+JOIN residents res ON r.room_id = res.room_id
+WHERE r.has_broken_windows = TRUE
+GROUP BY r.room_number, f.floor_number, r.total_area
+HAVING COUNT(res.resident_id) FILTER (WHERE res.is_child = TRUE) > 0
+ORDER BY r.room_number;
+
+
+-- 4. Функция шифрования паспортных данных
+CREATE OR REPLACE FUNCTION encrypt_passport_contract_holder(open_passport TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    secret_key TEXT := 'DormitorySecret2024';
+BEGIN
+    -- Проверка на NULL
+    IF open_passport IS NULL OR open_passport = '' THEN
+        RAISE EXCEPTION 'Паспортные данные не могут быть пустыми';
+    END IF;
+    -- Проверка формата
+    IF open_passport !~ '^\d{4} \d{6}$' THEN
+        RAISE EXCEPTION 'Неверный формат паспортных данных. Ожидается: 9999 999999';
+    END IF;
+    -- Шифрование: SHA-256
+    RETURN encode(
+        sha256(convert_to(open_passport || secret_key, 'UTF8')),
+        'base64'
+    );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- ДЕмоснтарция работы функции
+SELECT
+    res.last_name || ' ' || res.first_name AS "Владелец договора",
+    c.contract_type AS "Тип договора",
+    c.contract_number AS "Номер договора",
+    r.room_number AS "Комната",
+    res.passport_data AS "Открытые паспортные данные",
+    encrypt_passport_contract_holder(res.passport_data) AS "Зашифрованные паспортные данные"
+FROM contracts c
+JOIN residents res ON c.resident_id = res.resident_id
+JOIN rooms r ON c.room_id = r.room_id
+ORDER BY c.contract_number;
+
+

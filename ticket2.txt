@@ -1,0 +1,157 @@
+-- 1. Создание бд
+CREATE DATABASE ticket2;
+
+-- Кафедры
+CREATE TABLE kafedry (
+    kafedra_id SERIAL PRIMARY KEY,
+    kafedra_name VARCHAR(150) NOT NULL UNIQUE,
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    zaveduyushiy VARCHAR(100) NOT NULL
+);
+
+-- Сотрудники 
+CREATE TABLE sotrudniki (
+    sotrudnik_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    position VARCHAR(100) NOT NULL,
+    kafedra_id INT NOT NULL REFERENCES kafedry(kafedra_id) ON DELETE RESTRICT
+);
+
+-- Помещения
+CREATE TABLE pomeshcheniya (
+    pomeshchenie_id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL,
+    room_name VARCHAR(100) NOT NULL,
+    area NUMERIC(7, 2) NOT NULL CHECK (area > 0),
+    computers_count INT DEFAULT 0 CHECK (computers_count >= 0),
+    repair_year INT CHECK (repair_year >= 2000 AND repair_year <= 2100),
+    kafedra_id INT NOT NULL REFERENCES kafedry(kafedra_id) ON DELETE RESTRICT,
+    UNIQUE (room_number, kafedra_id)
+);
+
+-- 2. Заполнение тестовыми данными
+-- Кафедры 
+INSERT INTO kafedry (kafedra_name, phone_number, zaveduyushiy) VALUES
+('Кафедра высшей математики', '+7(900)111-22-33', 'Иванов Сергей Петрович'),
+('Кафедра физики', '+7(900)222-33-44', 'Петров Александр Иванович'),
+('Кафедра информатики', '+7(900)333-44-55', 'Сидоров Михаил Олегович'),
+('Кафедра иностранных языков', '+7(900)444-55-66', 'Козлова Елена Викторовна'),
+('Кафедра истории', '+7(900)555-66-77', 'Морозов Дмитрий Алексеевич'),
+('Кафедра химии', '+7(900)666-77-88', 'Волкова Татьяна Павловна'),
+('Кафедра биологии', '+7(900)777-88-99', 'Соколов Максим Андреевич'),
+('Кафедра экономики', '+7(900)888-99-00', 'Кузнецова Ольга Сергеевна'),
+('Кафедра философии', '+7(900)999-00-11', 'Баранов Павел Николаевич'),
+('Кафедра физвоспитания', '+7(900)000-11-22', 'Медведев Андрей Игоревич');
+
+-- Сотрудники
+INSERT INTO sotrudniki (last_name, first_name, middle_name, passport_data, phone_number, position, kafedra_id) VALUES
+('Иванов', 'Сергей', 'Петрович', '4501 111111', '+7(901)111-11-11', 'Заведующий кафедрой', 1),
+('Петров', 'Александр', 'Иванович', '4501 222222', '+7(901)222-22-22', 'Заведующий кафедрой', 2),
+('Сидоров', 'Михаил', 'Олегович', '4501 333333', '+7(901)333-33-33', 'Заведующий кафедрой', 3),
+('Козлова', 'Елена', 'Викторовна', '4501 444444', '+7(901)444-44-44', 'Заведующий кафедрой', 4),
+('Морозов', 'Дмитрий', 'Алексеевич', '4501 555555', '+7(901)555-55-55', 'Заведующий кафедрой', 5),
+('Волкова', 'Татьяна', 'Павловна', '4501 666666', '+7(901)666-66-66', 'Заведующий кафедрой', 6),
+('Соколов', 'Максим', 'Андреевич', '4501 777777', '+7(901)777-77-77', 'Заведующий кафедрой', 7),
+('Кузнецова', 'Ольга', 'Сергеевна', '4501 888888', '+7(901)888-88-88', 'Заведующий кафедрой', 8),
+('Баранов', 'Павел', 'Николаевич', '4501 999999', '+7(901)999-99-99', 'Заведующий кафедрой', 9),
+('Медведев', 'Андрей', 'Игоревич', '4501 000000', '+7(901)000-00-00', 'Заведующий кафедрой', 10);
+
+-- Помещения
+INSERT INTO pomeshcheniya (room_number, room_name, area, computers_count, repair_year, kafedra_id) VALUES
+-- Кафедра информатики (3 помещения)
+('301', 'Компьютерный класс №1', 60.5, 15, 2026, 3),
+('302', 'Компьютерный класс №2', 55.0, 12, 2025, 3),
+('303', 'Серверная', 20.0, 5, 2026, 3),
+('101', 'Лекционная аудитория', 70.0, 2, 2026, 1),
+('102', 'Кабинет преподавателей', 35.5, 5, 2024, 1),
+('201', 'Лаборатория физики', 80.0, 3, 2026, 2),
+('202', 'Кабинет физики', 45.0, 1, 2023, 2),
+('401', 'Лингафонный кабинет', 50.0, 20, 2025, 4),
+('402', 'Кабинет преподавателей', 30.0, 4, 2026, 4),
+('501', 'Химическая лаборатория', 90.0, 2, 2026, 6),
+('502', 'Кабинет химии', 40.0, 1, 2024, 6),
+('601', 'Компьютерный класс', 65.0, 18, 2026, 8);
+
+-- Запросы
+
+-- Запрос 1: Общее количество компьютеров по кафедрам
+SELECT 
+    k.kafedra_name AS "Кафедра",
+    SUM(p.computers_count) AS "Всего компьютеров"
+FROM kafedry k
+LEFT JOIN pomeshcheniya p ON k.kafedra_id = p.kafedra_id
+GROUP BY k.kafedra_id, k.kafedra_name
+ORDER BY "Всего компьютеров" DESC;
+
+-- Запрос 2: Средний метраж помещений определённой кафедры
+-- (kafedra_id = 3)
+SELECT 
+    k.kafedra_name AS "Кафедра",
+    COUNT(p.pomeshchenie_id) AS "Кол-во помещений",
+    ROUND(SUM(p.area) / COUNT(p.pomeshchenie_id), 2) AS "Средний метраж (кв.м)"
+FROM kafedry k
+JOIN pomeshcheniya p ON k.kafedra_id = p.kafedra_id
+WHERE k.kafedra_id = 3
+GROUP BY k.kafedra_id, k.kafedra_name;
+
+-- Запрос 3: Кабинеты, требующие ремонта в 2026 году
+SELECT 
+    k.kafedra_name AS "Кафедра",
+    p.room_number AS "Номер кабинета",
+    p.room_name AS "Название кабинета",
+    p.area AS "Площадь (кв.м)"
+FROM pomeshcheniya p
+JOIN kafedry k ON p.kafedra_id = k.kafedra_id
+WHERE p.repair_year = 2026
+ORDER BY k.kafedra_name, p.room_number;
+
+
+-- 4. Триггер
+CREATE OR REPLACE FUNCTION check_kafedra_name()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Проверка на пустоту
+    IF NEW.kafedra_name IS NULL OR NEW.kafedra_name = '' THEN
+        RAISE EXCEPTION 'ОШИБКА: Название кафедры не может быть пустым!';
+    END IF;
+    -- Проверка на первую букву 
+    IF NEW.kafedra_name !~ '^[А-ЯЁ]' THEN
+        RAISE EXCEPTION 'ОШИБКА: Название кафедры должно начинаться с большой буквы! Введено: %', NEW.kafedra_name;
+    END IF; 
+    -- Проверка на отсутствие цифр
+    IF NEW.kafedra_name ~ '\d' THEN
+        RAISE EXCEPTION 'ОШИБКА: Название кафедры не должно содержать цифр! Введено: %', NEW.kafedra_name;
+    END IF;
+    -- Проверка на минимальную длину
+    IF LENGTH(NEW.kafedra_name) < 5 THEN
+        RAISE EXCEPTION 'ОШИБКА: Название кафедры слишком короткое (минимум 5 символов)! Введено: %', NEW.kafedra_name;
+    END IF;
+    -- Если всё хорошо
+    RAISE NOTICE 'OK: Название кафедры "%" прошло проверку', NEW.kafedra_name;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Триггер на вставку и обновление названия кафедры
+CREATE TRIGGER trigger_check_kafedra_name
+BEFORE INSERT OR UPDATE ON kafedry
+FOR EACH ROW
+EXECUTE FUNCTION check_kafedra_name();
+
+-- Демонстрация работы триггера
+-- Успешная вставка
+INSERT INTO kafedry (kafedra_name, phone_number, zaveduyushiy) 
+VALUES ('Кафедра социологии', '+7(910)123-45-67', 'Николаева Анна Петровна');
+
+-- Ошибочная вставка (цифры в названии — вызовет ошибку)
+--INSERT INTO kafedry (kafedra_name, phone_number, zaveduyushiy) 
+--VALUES ('Кафедра 123', '+7(911)111-11-11', 'Тестов Тест Тестович');
+
+-- Ошибочная вставка (маленькая буква — вызовет ошибку)
+-- INSERT INTO kafedry (kafedra_name, phone_number, zaveduyushiy) 
+-- VALUES ('кафедра тест', '+7(922)222-22-22', 'Тестов Тест Тестович');
+
