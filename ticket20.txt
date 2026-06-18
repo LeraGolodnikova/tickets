@@ -1,0 +1,227 @@
+CREATE DATABASE ticket20;
+
+-- ============================================
+-- ПОЛНЫЙ СБРОС И ПЕРЕЗАПУСК
+-- ============================================
+
+DROP TABLE IF EXISTS shifts CASCADE;
+DROP TABLE IF EXISTS employees CASCADE;
+DROP TABLE IF EXISTS positions CASCADE;
+DROP TABLE IF EXISTS workshops CASCADE;
+
+-- =============================================
+-- БЛОК 1: СОЗДАНИЕ ТАБЛИЦ
+-- =============================================
+
+CREATE TABLE public.workshops (
+    workshop_id SERIAL PRIMARY KEY,
+    workshop_name VARCHAR(150) NOT NULL UNIQUE,
+    location VARCHAR(100)
+);
+
+CREATE TABLE public.positions (
+    position_id SERIAL PRIMARY KEY,
+    position_title VARCHAR(150) NOT NULL UNIQUE,
+    base_salary NUMERIC(10, 2) NOT NULL CHECK (base_salary > 0)
+);
+
+CREATE TABLE public.employees (
+    employee_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    gender CHAR(1) NOT NULL CHECK (gender IN ('М', 'Ж')),
+    birth_date DATE NOT NULL,
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+    hire_date DATE NOT NULL,
+    employment_type VARCHAR(30) NOT NULL DEFAULT 'Полный день' CHECK (employment_type IN ('Полный день', 'Неполный день', 'Совместительство')),
+    work_interval VARCHAR(20) CHECK (work_interval IS NULL OR work_interval ~ '^\d{2}:\d{2}-\d{2}:\d{2}$'),
+    military_status VARCHAR(30) NOT NULL DEFAULT 'Невоеннообязанный' CHECK (military_status IN ('Военнообязанный', 'Призван', 'Невоеннообязанный', 'Отсрочка')),
+    workshop_id INT NOT NULL REFERENCES public.workshops(workshop_id) ON DELETE RESTRICT,
+    position_id INT NOT NULL REFERENCES public.positions(position_id) ON DELETE RESTRICT
+);
+
+-- Исправленная таблица смен (без CHECK на время, или с пояснением)
+CREATE TABLE public.shifts (
+    shift_id SERIAL PRIMARY KEY,
+    shift_date DATE NOT NULL,
+    shift_number INT NOT NULL CHECK (shift_number IN (1, 2, 3)),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    employee_id INT NOT NULL REFERENCES public.employees(employee_id) ON DELETE CASCADE,
+    UNIQUE (shift_date, shift_number, employee_id)
+);
+
+-- =============================================
+-- БЛОК 2: ТЕСТОВЫЕ ДАННЫЕ
+-- =============================================
+
+-- 2.1 Цеха (10 записей)
+INSERT INTO public.workshops (workshop_name, location) VALUES
+('Цех сборки №1', 'Корпус А'),
+('Цех сборки №2', 'Корпус А'),
+('Сварочный цех', 'Корпус Б'),
+('Транспортный цех', 'Корпус Б'),
+('Инструментальный цех', 'Корпус В'),
+('Ремонтный цех', 'Корпус В'),
+('Цех покраски', 'Корпус Г'),
+('Бухгалтерия', 'Администрация'),
+('Отдел кадров', 'Администрация'),
+('Склад', 'Корпус Д');
+
+-- Проверка: точно вставились
+SELECT 'Цеха вставлены:' AS "Проверка", COUNT(*) AS "Количество" FROM public.workshops;
+
+-- 2.2 Должности (10 записей)
+INSERT INTO public.positions (position_title, base_salary) VALUES
+('Слесарь-сборщик', 45000.00),
+('Сварщик', 55000.00),
+('Водитель погрузчика', 52000.00),
+('Мастер цеха', 65000.00),
+('Инженер-технолог', 70000.00),
+('Наладчик оборудования', 48000.00),
+('Маляр', 42000.00),
+('Бухгалтер', 60000.00),
+('Инспектор отдела кадров', 50000.00),
+('Кладовщик', 40000.00);
+
+-- Проверка
+SELECT 'Должности вставлены:' AS "Проверка", COUNT(*) AS "Количество" FROM public.positions;
+
+-- 2.3 Сотрудники (14 записей)
+INSERT INTO public.employees (last_name, first_name, middle_name, gender, birth_date, passport_data, phone_number, hire_date, employment_type, work_interval, military_status, workshop_id, position_id) VALUES
+('Иванов', 'Сергей', 'Петрович', 'М', '2000-05-15', '4501 111111', '+7(900)111-11-11', '2022-02-01', 'Полный день', NULL, 'Призван', 1, 1),
+('Петров', 'Александр', 'Иванович', 'М', '2001-08-20', '4501 222222', '+7(900)222-22-22', '2023-05-10', 'Полный день', NULL, 'Призван', 2, 2),
+('Сидоров', 'Михаил', 'Олегович', 'М', '1995-03-12', '4501 333333', '+7(900)333-33-33', '2015-09-15', 'Полный день', NULL, 'Военнообязанный', 1, 4),
+('Козлов', 'Дмитрий', 'Алексеевич', 'М', '1998-07-07', '4501 444444', '+7(900)444-44-44', '2020-01-20', 'Полный день', NULL, 'Военнообязанный', 3, 2),
+('Морозова', 'Елена', 'Викторовна', 'Ж', '1990-12-01', '4501 555555', '+7(900)555-55-55', '2018-06-01', 'Неполный день', '09:00-14:00', 'Невоеннообязанный', 2, 5),
+('Волков', 'Максим', 'Николаевич', 'М', '1985-08-22', '4501 666666', '+7(900)666-66-66', '2014-03-10', 'Неполный день', '10:00-15:00', 'Отсрочка', 4, 3),
+('Соколова', 'Татьяна', 'Павловна', 'Ж', '1988-04-05', '4501 777777', '+7(900)777-77-77', '2016-11-12', 'Совместительство', NULL, 'Невоеннообязанный', 5, 6),
+('Кузнецова', 'Ольга', 'Сергеевна', 'Ж', '1992-02-14', '4501 888888', '+7(900)888-88-88', '2019-04-15', 'Совместительство', NULL, 'Невоеннообязанный', 6, 7),
+('Баранов', 'Алексей', 'Игнатьевич', 'М', '1982-09-30', '4501 999999', '+7(900)999-99-99', '2010-07-01', 'Совместительство', NULL, 'Невоеннообязанный', 7, 8),
+('Медведева', 'Любовь', 'Андреевна', 'Ж', '1986-11-25', '4502 111111', '+7(901)111-11-11', '2012-12-05', 'Совместительство', NULL, 'Невоеннообязанный', 8, 9),
+('Николаев', 'Павел', 'Степанович', 'М', '1996-06-18', '4502 222222', '+7(901)222-22-22', '2021-08-20', 'Полный день', NULL, 'Военнообязанный', 8, 10),
+('Васильева', 'Анна', 'Игоревна', 'Ж', '1993-03-30', '4502 333333', '+7(901)333-33-33', '2017-05-10', 'Неполный день', '08:00-13:00', 'Невоеннообязанный', 5, 5),
+('Фёдоров', 'Игорь', 'Семёнович', 'М', '1997-10-15', '4502 444444', '+7(901)444-44-44', '2024-02-01', 'Полный день', NULL, 'Военнообязанный', 4, 3),
+('Григорьева', 'Марина', 'Дмитриевна', 'Ж', '1991-07-22', '4502 555555', '+7(901)555-55-55', '2019-09-12', 'Неполный день', '12:00-17:00', 'Невоеннообязанный', 6, 6);
+
+-- Проверка
+SELECT 'Сотрудники вставлены:' AS "Проверка", COUNT(*) AS "Количество" FROM public.employees;
+
+-- 2.4 Смены (10 записей — для демонстрации, призванных пока нет в сменах)
+INSERT INTO public.shifts (shift_date, shift_number, start_time, end_time, employee_id) VALUES
+('2025-06-20', 1, '07:00', '15:00', 3),
+('2025-06-20', 1, '07:00', '15:00', 4),
+('2025-06-20', 1, '07:00', '15:00', 5),
+('2025-06-20', 2, '15:00', '23:00', 6),
+('2025-06-20', 2, '15:00', '23:00', 7),
+('2025-06-20', 3, '23:00', '07:00', 11),
+('2025-06-21', 1, '07:00', '15:00', 8),
+('2025-06-21', 1, '07:00', '15:00', 9),
+('2025-06-21', 2, '15:00', '23:00', 10),
+('2025-06-21', 2, '15:00', '23:00', 14);
+-- =============================================
+-- БЛОК 3: ЗАПРОСЫ (DQL)
+-- =============================================
+
+-- Запрос 3.1: Сотрудники, подлежащие призыву на военную службу
+/*
+ * Подлежат призыву: мужчины от 18 до 30 лет (по закону),
+ * имеющие статус «Военнообязанный» или «Призван».
+ */
+SELECT
+    'Подлежат призыву' AS "Запрос 3.1",
+    e.last_name || ' ' || e.first_name || COALESCE(' ' || e.middle_name, '') AS "ФИО",
+    EXTRACT(YEAR FROM AGE(CURRENT_DATE, e.birth_date)) AS "Возраст",
+    e.military_status AS "Статус воинского учёта",
+    w.workshop_name AS "Цех",
+    p.position_title AS "Должность",
+    e.phone_number AS "Телефон"
+FROM employees e
+JOIN workshops w ON e.workshop_id = w.workshop_id
+JOIN positions p ON e.position_id = p.position_id
+WHERE e.gender = 'М'
+  AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, e.birth_date)) BETWEEN 18 AND 30
+  AND e.military_status IN ('Военнообязанный', 'Призван')
+ORDER BY e.last_name;
+
+-- Запрос 3.2: Сотрудники, работающие по совместительству
+SELECT
+    'Совместители' AS "Запрос 3.2",
+    e.last_name || ' ' || e.first_name || COALESCE(' ' || e.middle_name, '') AS "ФИО",
+    e.gender AS "Пол",
+    w.workshop_name AS "Цех",
+    p.position_title AS "Должность",
+    e.phone_number AS "Телефон",
+    e.hire_date AS "Дата приёма"
+FROM employees e
+JOIN workshops w ON e.workshop_id = w.workshop_id
+JOIN positions p ON e.position_id = p.position_id
+WHERE e.employment_type = 'Совместительство'
+ORDER BY e.last_name;
+
+-- Запрос 3.3: Сотрудники на неполном рабочем дне с интервалом работы
+SELECT
+    'Неполный рабочий день' AS "Запрос 3.3",
+    e.last_name || ' ' || e.first_name || COALESCE(' ' || e.middle_name, '') AS "ФИО",
+    w.workshop_name AS "Цех",
+    p.position_title AS "Должность",
+    e.work_interval AS "Интервал работы",
+    e.military_status AS "Воинский учёт",
+    e.phone_number AS "Телефон"
+FROM employees e
+JOIN workshops w ON e.workshop_id = w.workshop_id
+JOIN positions p ON e.position_id = p.position_id
+WHERE e.employment_type = 'Неполный день'
+ORDER BY e.work_interval;
+
+
+-- =============================================
+-- БЛОК 4: ТРИГГЕР И ФУНКЦИЯ
+-- =============================================
+
+/*
+ * Функция check_military_draft
+ * Запрещает назначать в смену сотрудника, если он призван на военную службу.
+ */
+CREATE OR REPLACE FUNCTION check_military_draft()
+RETURNS TRIGGER AS $$
+DECLARE
+    emp_military_status VARCHAR(30);
+    emp_name VARCHAR(150);
+BEGIN
+    -- Получаем статус и имя сотрудника
+    SELECT e.military_status, e.last_name || ' ' || e.first_name
+    INTO emp_military_status, emp_name
+    FROM employees e
+    WHERE e.employee_id = NEW.employee_id;
+
+    -- Если сотрудник призван — запрещаем назначение в смену
+    IF emp_military_status = 'Призван' THEN
+        RAISE EXCEPTION 'Невозможно назначить в смену! Сотрудник "%" находится на военной службе по призыву.', emp_name;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Триггер на вставку и обновление таблицы смен
+CREATE TRIGGER trigger_check_military_draft
+BEFORE INSERT OR UPDATE ON shifts
+FOR EACH ROW
+EXECUTE FUNCTION check_military_draft();
+
+-- =============================================
+-- ДЕМОНСТРАЦИЯ РАБОТЫ ТРИГГЕРА
+-- =============================================
+
+-- Успешная вставка: Сидоров — военнообязанный (можно)
+INSERT INTO shifts (shift_date, shift_number, start_time, end_time, employee_id)
+VALUES ('2025-06-22', 1, '07:00', '15:00', 3);
+
+-- Ошибочная вставка: Иванов — призван (вызовет EXCEPTION)
+INSERT INTO shifts (shift_date, shift_number, start_time, end_time, employee_id)
+VALUES ('2025-06-22', 1, '07:00', '15:00', 1);
+
+

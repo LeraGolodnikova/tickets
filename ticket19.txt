@@ -1,0 +1,244 @@
+CREATE DATABASE ticket19;
+
+-- =============================================
+-- БЛОК 1: СОЗДАНИЕ ТАБЛИЦ И ОГРАНИЧЕНИЙ (DDL)
+-- =============================================
+
+-- 1.1 Цеха
+CREATE TABLE workshops (
+    workshop_id SERIAL PRIMARY KEY,
+    workshop_name VARCHAR(150) NOT NULL UNIQUE,
+    location VARCHAR(100)
+);
+
+-- 1.2 Должности
+CREATE TABLE positions (
+    position_id SERIAL PRIMARY KEY,
+    position_title VARCHAR(150) NOT NULL UNIQUE,
+    base_salary NUMERIC(10, 2) NOT NULL CHECK (base_salary > 0)
+);
+
+-- 1.3 Сотрудники
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+
+    -- ФИО: кириллица, с большой буквы
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+
+    -- Пол
+    gender CHAR(1) NOT NULL CHECK (gender IN ('М', 'Ж')),
+
+    -- Дата рождения
+    birth_date DATE NOT NULL,
+
+    -- Паспорт: маска "9999 999999"
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+
+    -- Телефон: маска +7(XXX)XXX-XX-XX
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+
+    -- Дата приёма
+    hire_date DATE NOT NULL,
+
+    -- Цех и должность
+    workshop_id INT NOT NULL REFERENCES workshops(workshop_id) ON DELETE RESTRICT,
+    position_id INT NOT NULL REFERENCES positions(position_id) ON DELETE RESTRICT
+);
+
+-- 1.4 Дети сотрудников
+CREATE TABLE children (
+    child_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+    gender CHAR(1) NOT NULL CHECK (gender IN ('М', 'Ж')),
+    birth_date DATE NOT NULL,
+    employee_id INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE
+);
+
+-- =============================================
+-- БЛОК 2: ТЕСТОВЫЕ ДАННЫЕ (DML)
+-- =============================================
+
+-- 2.1 Цеха (10 записей)
+INSERT INTO workshops (workshop_name, location) VALUES
+('Цех сборки №1', 'Корпус А'),
+('Цех сборки №2', 'Корпус А'),
+('Сварочный цех', 'Корпус Б'),
+('Транспортный цех', 'Корпус Б'),
+('Инструментальный цех', 'Корпус В'),
+('Ремонтный цех', 'Корпус В'),
+('Цех покраски', 'Корпус Г'),
+('Бухгалтерия', 'Администрация'),
+('Отдел кадров', 'Администрация'),
+('Склад', 'Корпус Д');
+
+-- 2.2 Должности (10 записей)
+INSERT INTO positions (position_title, base_salary) VALUES
+('Слесарь-сборщик', 45000.00),
+('Сварщик', 55000.00),
+('Водитель погрузчика', 52000.00),
+('Мастер цеха', 65000.00),
+('Инженер-технолог', 70000.00),
+('Наладчик оборудования', 48000.00),
+('Маляр', 42000.00),
+('Бухгалтер', 60000.00),
+('Инспектор отдела кадров', 50000.00),
+('Кладовщик', 40000.00);
+
+-- 2.3 Сотрудники (12 записей)
+INSERT INTO employees (last_name, first_name, middle_name, gender, birth_date, passport_data, phone_number, hire_date, workshop_id, position_id) VALUES
+('Иванов', 'Сергей', 'Петрович', 'М', '1980-05-15', '4501 111111', '+7(900)111-11-11', '2010-02-01', 1, 4),
+('Петрова', 'Анна', 'Ивановна', 'Ж', '1985-10-20', '4501 222222', '+7(900)222-22-22', '2012-05-10', 1, 1),
+('Сидоров', 'Михаил', 'Олегович', 'М', '1975-03-12', '4501 333333', '+7(900)333-33-33', '2009-09-15', 1, 1),
+('Козлов', 'Дмитрий', 'Алексеевич', 'М', '1990-07-07', '4501 444444', '+7(900)444-44-44', '2018-01-20', 2, 2),
+('Морозова', 'Елена', 'Викторовна', 'Ж', '1988-12-01', '4501 555555', '+7(900)555-55-55', '2020-06-01', 2, 2),
+('Волков', 'Максим', 'Николаевич', 'М', '1982-08-22', '4501 666666', '+7(900)666-66-66', '2014-03-10', 3, 2),
+('Соколова', 'Татьяна', 'Павловна', 'Ж', '1987-04-05', '4501 777777', '+7(900)777-77-77', '2016-11-12', 4, 3),
+('Кузнецова', 'Ольга', 'Сергеевна', 'Ж', '1992-02-14', '4501 888888', '+7(900)888-88-88', '2019-04-15', 5, 5),
+('Баранов', 'Алексей', 'Игнатьевич', 'М', '1978-09-30', '4501 999999', '+7(900)999-99-99', '2008-07-01', 6, 6),
+('Медведева', 'Любовь', 'Андреевна', 'Ж', '1983-11-25', '4502 111111', '+7(901)111-11-11', '2011-12-05', 8, 8),
+('Николаев', 'Павел', 'Степанович', 'М', '1976-06-18', '4502 222222', '+7(901)222-22-22', '2007-08-20', 8, 8),
+('Васильев', 'Андрей', 'Игоревич', 'М', '1989-03-30', '4502 333333', '+7(901)333-33-33', '2017-05-10', 1, 1);
+
+-- 2.4 Дети (15 записей)
+INSERT INTO children (last_name, first_name, middle_name, gender, birth_date, employee_id) VALUES
+-- Иванов: сын и дочь (разнополые ✓)
+('Иванов', 'Максим', 'Сергеевич', 'М', '2010-03-15', 1),
+('Иванова', 'Мария', 'Сергеевна', 'Ж', '2013-08-20', 1),
+
+-- Петрова: две дочери (однополые ✗)
+('Петрова', 'Ольга', 'Александровна', 'Ж', '2011-05-10', 2),
+('Петрова', 'Анастасия', 'Александровна', 'Ж', '2014-11-05', 2),
+
+-- Сидоров: сын (всего один ✗)
+('Сидоров', 'Артём', 'Михайлович', 'М', '2012-07-22', 3),
+
+-- Козлов: сын и дочь (разнополые ✓)
+('Козлов', 'Денис', 'Дмитриевич', 'М', '2009-02-14', 4),
+('Козлова', 'Екатерина', 'Дмитриевна', 'Ж', '2012-09-10', 4),
+
+-- Морозова: сын (один ✗)
+('Морозов', 'Илья', 'Павлович', 'М', '2015-06-30', 5),
+
+-- Волков: два сына (однополые ✗)
+('Волков', 'Алексей', 'Максимович', 'М', '2008-04-12', 6),
+('Волков', 'Никита', 'Максимович', 'М', '2011-01-25', 6),
+
+-- Соколова: дочь (одна ✗)
+('Соколова', 'Дарья', 'Андреевна', 'Ж', '2014-10-08', 7),
+
+-- Баранов: сын и две дочери (разнополые ✓)
+('Баранов', 'Кирилл', 'Алексеевич', 'М', '2007-12-03', 9),
+('Баранова', 'Полина', 'Алексеевна', 'Ж', '2010-08-17', 9),
+('Баранова', 'Алина', 'Алексеевна', 'Ж', '2013-05-29', 9),
+
+-- Медведева: нет детей
+
+-- Николаев: нет детей
+
+-- Васильев: дочь (одна ✗)
+('Васильева', 'Виктория', 'Андреевна', 'Ж', '2016-02-20', 12);
+
+
+-- =============================================
+-- БЛОК 3: ЗАПРОСЫ (DQL)
+-- =============================================
+
+-- Запрос 3.1: Сотрудники заданной должности в указанном цехе
+-- Пример: должность «Слесарь-сборщик», цех «Цех сборки №1»
+SELECT
+    'Сотрудники по фильтру' AS "Запрос 3.1",
+    e.last_name || ' ' || e.first_name || COALESCE(' ' || e.middle_name, '') AS "ФИО",
+    e.gender AS "Пол",
+    p.position_title AS "Должность",
+    w.workshop_name AS "Цех",
+    e.phone_number AS "Телефон",
+    e.hire_date AS "Дата приёма"
+FROM employees e
+JOIN positions p ON e.position_id = p.position_id
+JOIN workshops w ON e.workshop_id = w.workshop_id
+WHERE p.position_title = 'Слесарь-сборщик'
+  AND w.workshop_name = 'Цех сборки №1'
+ORDER BY e.last_name;
+
+-- Запрос 3.2: Средний возраст мужчин и женщин по цехам
+SELECT
+    'Средний возраст по цехам' AS "Запрос 3.2",
+    w.workshop_name AS "Цех",
+    ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, e.birth_date))) FILTER (WHERE e.gender = 'М'), 1) AS "Средний возраст мужчин",
+    ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, e.birth_date))) FILTER (WHERE e.gender = 'Ж'), 1) AS "Средний возраст женщин",
+    COUNT(e.employee_id) FILTER (WHERE e.gender = 'М') AS "Мужчин",
+    COUNT(e.employee_id) FILTER (WHERE e.gender = 'Ж') AS "Женщин"
+FROM workshops w
+LEFT JOIN employees e ON w.workshop_id = e.workshop_id
+GROUP BY w.workshop_name
+ORDER BY w.workshop_name;
+
+-- Запрос 3.3: Сотрудники, имеющие разнополых детей
+/*
+ * Разнополые дети — у сотрудника есть хотя бы один сын (М) и хотя бы одна дочь (Ж).
+ */
+WITH child_genders AS (
+    SELECT
+        employee_id,
+        COUNT(DISTINCT gender) AS gender_count,
+        COUNT(*) FILTER (WHERE gender = 'М') AS sons,
+        COUNT(*) FILTER (WHERE gender = 'Ж') AS daughters
+    FROM children
+    GROUP BY employee_id
+    HAVING COUNT(DISTINCT gender) >= 2
+)
+SELECT
+    'Сотрудники с разнополыми детьми' AS "Запрос 3.3",
+    e.last_name || ' ' || e.first_name || COALESCE(' ' || e.middle_name, '') AS "ФИО сотрудника",
+    w.workshop_name AS "Цех",
+    p.position_title AS "Должность",
+    cg.sons AS "Сыновей",
+    cg.daughters AS "Дочерей",
+    cg.sons + cg.daughters AS "Всего детей"
+FROM child_genders cg
+JOIN employees e ON cg.employee_id = e.employee_id
+JOIN workshops w ON e.workshop_id = w.workshop_id
+JOIN positions p ON e.position_id = p.position_id
+ORDER BY e.last_name;
+
+
+-- =============================================
+-- БЛОК 4: РЕЗЕРВНАЯ КОПИЯ И ВОССТАНОВЛЕНИЕ
+-- =============================================
+
+/*
+ * СОЗДАНИЕ РЕЗЕРВНОЙ КОПИИ
+ * Выполняется в терминале командой:
+ *
+ * pg_dump -U postgres -h localhost -d zavod -F c -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zavod.backup"
+ *
+ * Параметры:
+ * -U postgres    — пользователь
+ * -h localhost   — хост
+ * -d zavod       — имя базы данных
+ * -F c           — формат custom (сжатый)
+ * -f "путь"      — путь к файлу бэкапа
+ *
+ * ВОССТАНОВЛЕНИЕ ИЗ РЕЗЕРВНОЙ КОПИИ
+ * Выполняется в терминале командой:
+ *
+ * pg_restore -U postgres -h localhost -d zavod -c "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zavod.backup"
+ *
+ * Параметры:
+ * -U postgres    — пользователь
+ * -h localhost   — хост
+ * -d zavod       — имя базы данных (куда восстанавливаем)
+ * -c             — очистить существующие данные перед восстановлением
+ * "путь"         — путь к файлу бэкапа
+ *
+ * АЛЬТЕРНАТИВА: Резервная копия в SQL-формате (plain text)
+ * pg_dump -U postgres -h localhost -d zavod -F p -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zavod.sql"
+ *
+ * Восстановление из SQL:
+ * psql -U postgres -h localhost -d zavod -f "C:\Users\Student\Desktop\ЭКЗАМЕН ПМ11\backup_zavod.sql"
+ */
+

@@ -1,0 +1,227 @@
+CREATE DATABASE ticket16;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- =============================================
+-- БЛОК 1: СОЗДАНИЕ ТАБЛИЦ И ОГРАНИЧЕНИЙ (DDL)
+-- =============================================
+
+-- 1.1 Виды страхования
+CREATE TABLE insurance_types (
+    type_id SERIAL PRIMARY KEY,
+    type_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- 1.2 Клиенты
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+
+    -- ФИО: кириллица, с большой буквы
+    last_name VARCHAR(50) NOT NULL CHECK (last_name ~ '^[А-ЯЁ][а-яё]+$'),
+    first_name VARCHAR(50) NOT NULL CHECK (first_name ~ '^[А-ЯЁ][а-яё]+$'),
+    middle_name VARCHAR(50) CHECK (middle_name ~ '^[А-ЯЁ][а-яё]+$' OR middle_name IS NULL),
+
+    -- Паспорт: маска "9999 999999"
+    passport_data VARCHAR(11) NOT NULL UNIQUE CHECK (passport_data ~ '^\d{4} \d{6}$'),
+
+    -- Телефон: маска +7(XXX)XXX-XX-XX
+    phone_number VARCHAR(16) NOT NULL UNIQUE CHECK (phone_number ~ '^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$'),
+
+    -- Адрес
+    address VARCHAR(200) NOT NULL
+);
+
+-- 1.3 Договоры страхования (UUID, CASCADE при удалении клиента)
+CREATE TABLE contracts (
+    contract_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    contract_number VARCHAR(20) NOT NULL UNIQUE,
+    contract_date DATE NOT NULL,
+    end_date DATE NOT NULL CHECK (end_date > contract_date),
+    sum_insured NUMERIC(12, 2) NOT NULL CHECK (sum_insured > 0),
+    status VARCHAR(30) NOT NULL DEFAULT 'Действует' CHECK (status IN ('Действует', 'Досрочно расторгнут', 'Завершён', 'Выплата произведена')),
+    client_id INT NOT NULL REFERENCES clients(client_id) ON DELETE CASCADE,
+    type_id INT NOT NULL REFERENCES insurance_types(type_id) ON DELETE RESTRICT
+);
+
+-- 1.4 График платежей (CASCADE при удалении договора)
+CREATE TABLE payments (
+    payment_id SERIAL PRIMARY KEY,
+    planned_date DATE NOT NULL,
+    actual_date DATE,
+    amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
+    is_paid BOOLEAN NOT NULL DEFAULT FALSE,
+    contract_id UUID NOT NULL REFERENCES contracts(contract_id) ON DELETE CASCADE
+);
+
+
+-- =============================================
+-- БЛОК 2: ТЕСТОВЫЕ ДАННЫЕ (DML)
+-- =============================================
+
+-- 2.1 Виды страхования (10 записей)
+INSERT INTO insurance_types (type_name) VALUES
+('Автострахование'),
+('Страхование квартиры'),
+('Страхование дома'),
+('Медицинское страхование'),
+('Страхование жизни'),
+('Страхование от несчастных случаев'),
+('Страхование багажа'),
+('ОСАГО'),
+('Страхование дачи'),
+('Страхование животных');
+
+-- 2.2 Клиенты (10 записей)
+INSERT INTO clients (last_name, first_name, middle_name, passport_data, phone_number, address) VALUES
+('Иванов', 'Сергей', 'Петрович', '4501 111111', '+7(900)111-11-11', 'г. Москва, ул. Ленина, д. 10, кв. 5'),
+('Петрова', 'Анна', 'Ивановна', '4501 222222', '+7(900)222-22-22', 'г. Москва, ул. Мира, д. 20, кв. 15'),
+('Сидоров', 'Михаил', 'Олегович', '4501 333333', '+7(900)333-33-33', 'г. Москва, ул. Пушкина, д. 5, кв. 8'),
+('Козлов', 'Дмитрий', 'Алексеевич', '4501 444444', '+7(900)444-44-44', 'г. Москва, ул. Тверская, д. 30, кв. 10'),
+('Морозова', 'Елена', 'Викторовна', '4501 555555', '+7(900)555-55-55', 'г. Москва, ул. Садовая, д. 8, кв. 3'),
+('Волков', 'Максим', 'Николаевич', '4501 666666', '+7(900)666-66-66', 'г. Москва, ул. Гагарина, д. 15, кв. 22'),
+('Соколова', 'Татьяна', 'Павловна', '4501 777777', '+7(900)777-77-77', 'г. Москва, ул. Цветная, д. 12, кв. 7'),
+('Кузнецова', 'Ольга', 'Сергеевна', '4501 888888', '+7(900)888-88-88', 'г. Москва, ул. Арбат, д. 18, кв. 4'),
+('Баранов', 'Алексей', 'Игнатьевич', '4501 999999', '+7(900)999-99-99', 'г. Москва, ул. Ордынка, д. 25, кв. 12'),
+('Медведев', 'Андрей', 'Степанович', '4502 111111', '+7(901)111-11-11', 'г. Москва, ул. Петровка, д. 14, кв. 11');
+
+-- 2.3 Договоры (12 записей, UUID генерируется автоматически)
+INSERT INTO contracts (contract_number, contract_date, end_date, sum_insured, status, client_id, type_id) VALUES
+('Д-001/2024', '2024-01-15', '2024-07-15', 500000.00, 'Выплата произведена', 1, 1),
+('Д-002/2025', '2025-01-10', '2026-01-10', 1500000.00, 'Действует', 1, 2),
+('Д-003/2025', '2025-02-05', '2026-02-05', 800000.00, 'Досрочно расторгнут', 2, 1),
+('Д-004/2025', '2025-03-20', '2026-03-20', 3500000.00, 'Действует', 2, 3),
+('Д-005/2024', '2024-06-01', '2024-12-01', 600000.00, 'Выплата произведена', 3, 8),
+('Д-006/2025', '2025-04-15', '2026-04-15', 1200000.00, 'Действует', 4, 1),
+('Д-007/2025', '2025-05-10', '2026-05-10', 900000.00, 'Действует', 5, 2),
+('Д-008/2025', '2025-01-20', '2026-01-20', 2000000.00, 'Досрочно расторгнут', 6, 4),
+('Д-009/2025', '2025-02-15', '2025-08-15', 450000.00, 'Действует', 7, 9),
+('Д-010/2025', '2025-06-01', '2026-06-01', 3000000.00, 'Действует', 7, 1),
+('Д-011/2024', '2024-03-10', '2024-09-10', 700000.00, 'Выплата произведена', 8, 5),
+('Д-012/2025', '2025-06-05', '2026-06-05', 1100000.00, 'Действует', 9, 2);
+
+-- 2.4 Платежи (14 записей)
+INSERT INTO payments (planned_date, actual_date, amount, is_paid, contract_id) VALUES
+-- Д-001: все платежи выполнены (выплата произведена)
+('2024-01-15', '2024-01-15', 83333.33, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-001/2024')),
+('2024-04-15', '2024-04-15', 83333.33, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-001/2024')),
+
+-- Д-002: платит
+('2025-01-10', '2025-01-10', 125000.00, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-002/2025')),
+('2025-04-10', '2025-04-10', 125000.00, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-002/2025')),
+
+-- Д-003: досрочно расторгнут — есть неоплаченные
+('2025-02-05', '2025-02-05', 66666.67, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-003/2025')),
+('2025-05-05', NULL, 66666.67, FALSE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-003/2025')),
+
+-- Д-005: выплата произведена
+('2024-06-01', '2024-06-01', 100000.00, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-005/2024')),
+
+-- Д-008: досрочно расторгнут
+('2025-01-20', '2025-01-20', 166666.67, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-008/2025')),
+('2025-04-20', NULL, 166666.67, FALSE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-008/2025')),
+
+-- Д-011: выплата произведена
+('2024-03-10', '2024-03-10', 116666.67, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-011/2024')),
+
+-- Д-004: платит
+('2025-03-20', '2025-03-20', 291666.67, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-004/2025')),
+
+-- Д-006: платит
+('2025-04-15', '2025-04-15', 100000.00, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-006/2025')),
+
+-- Д-010: платит
+('2025-06-01', '2025-06-01', 250000.00, TRUE, (SELECT contract_id FROM contracts WHERE contract_number = 'Д-010/2025'));
+
+
+
+-- =============================================
+-- БЛОК 3: ЗАПРОСЫ И ОПЕРАЦИИ (DQL + DML)
+-- =============================================
+
+-- Запрос 3.1: Клиенты, прервавшие выплаты досрочно
+/*
+ * Досрочно прерванные — договоры со статусом 'Досрочно расторгнут'.
+ * Выводим клиентов и неоплаченные платежи.
+ */
+SELECT
+    'Досрочно прервано' AS "Задача 3.1",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО клиента",
+    c.phone_number AS "Телефон",
+    cnt.contract_number AS "Номер договора",
+    cnt.status AS "Статус",
+    COUNT(p.payment_id) FILTER (WHERE p.is_paid = FALSE) AS "Неоплаченных платежей",
+    SUM(p.amount) FILTER (WHERE p.is_paid = FALSE) AS "Сумма задолженности (руб.)"
+FROM clients c
+JOIN contracts cnt ON c.client_id = cnt.client_id
+LEFT JOIN payments p ON cnt.contract_id = p.contract_id
+WHERE cnt.status = 'Досрочно расторгнут'
+GROUP BY c.last_name, c.first_name, c.middle_name, c.phone_number, cnt.contract_number, cnt.status
+ORDER BY c.last_name;
+
+-- Запрос 3.2: Клиенты с 2 и более страховками
+WITH client_contract_counts AS (
+    SELECT
+        client_id,
+        COUNT(*) AS contract_count
+    FROM contracts
+    GROUP BY client_id
+    HAVING COUNT(*) >= 2
+)
+SELECT
+    'Клиенты с 2+ страховками' AS "Задача 3.2",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО клиента",
+    c.phone_number AS "Телефон",
+    ccc.contract_count AS "Количество договоров",
+    STRING_AGG(cnt.contract_number || ' (' || cnt.status || ')', ', ' ORDER BY cnt.contract_number) AS "Договоры"
+FROM client_contract_counts ccc
+JOIN clients c ON ccc.client_id = c.client_id
+JOIN contracts cnt ON c.client_id = cnt.client_id
+GROUP BY c.last_name, c.first_name, c.middle_name, c.phone_number, ccc.contract_count
+ORDER BY ccc.contract_count DESC;
+
+-- Задача 3.3: Удаление клиентов с завершёнными и выплаченными договорами
+-- Проверка: кто будет удалён
+SELECT
+    'Клиенты к удалению' AS "Задача 3.3 (проверка)",
+    c.client_id AS "ID",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО",
+    STRING_AGG(cnt.contract_number || ': ' || cnt.status, ', ') AS "Договоры"
+FROM clients c
+JOIN contracts cnt ON c.client_id = cnt.client_id
+WHERE c.client_id IN (
+    SELECT client_id
+    FROM contracts
+    GROUP BY client_id
+    HAVING COUNT(*) = COUNT(*) FILTER (WHERE status = 'Выплата произведена')
+)
+GROUP BY c.client_id, c.last_name, c.first_name, c.middle_name;
+
+-- Одним запросом удаляем клиентов — остальное каскадом
+DELETE FROM clients
+WHERE client_id IN (
+    SELECT client_id
+    FROM contracts
+    GROUP BY client_id
+    HAVING COUNT(*) = COUNT(*) FILTER (WHERE status = 'Выплата произведена')
+);
+
+-- Проверка после удаления
+SELECT
+    'После удаления' AS " ",
+    c.client_id AS "ID",
+    c.last_name || ' ' || c.first_name || COALESCE(' ' || c.middle_name, '') AS "ФИО"
+FROM clients c
+ORDER BY c.client_id;
+
+-- =============================================
+-- БЛОК 4: ДЕМОНСТРАЦИЯ UUID
+-- =============================================
+
+SELECT
+    'UUID ДОГОВОРОВ' AS "Пункт 4",
+    cnt.contract_number AS "Номер договора",
+    cnt.contract_id AS "UUID",
+    cnt.contract_date AS "Дата заключения",
+    cnt.status AS "Статус"
+FROM contracts cnt
+ORDER BY cnt.contract_date;
